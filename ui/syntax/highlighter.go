@@ -356,8 +356,9 @@ func is_valid_ipv6(s string_span_t) int8 {
 					tempVar := s.s
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
 				}()))))) != 0 {
-					break
+					continue
 				}
+				break
 			}
 			if j == uint32(uint32(int32(0))) {
 				return int8(int8(int32(0)))
