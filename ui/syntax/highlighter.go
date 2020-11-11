@@ -1,643 +1,1317 @@
 /* SPDX-License-Identifier: MIT
  *
  * Copyright (C) 2020 WireGuard LLC. All Rights Reserved.
+ *
+ * This is transpiled from C. Replace asap.
  */
 
 package syntax
 
-import "strings"
-
-type highlight int
-
-const (
-	highlightSection highlight = iota
-	highlightField
-	highlightPrivateKey
-	highlightPublicKey
-	highlightPresharedKey
-	highlightIP
-	highlightCidr
-	highlightHost
-	highlightPort
-	highlightMTU
-	highlightKeepalive
-	highlightComment
-	highlightDelimiter
-	highlightTable
-	highlightFwMark
-	highlightSaveConfig
-	highlightCmd
-	highlightError
+import (
+	"bytes"
+	"unsafe"
 )
 
-func validateHighlight(isValid bool, t highlight) highlight {
-	if isValid {
-		return t
+func toByteSlice(a *byte, length int32) []byte {
+	header := struct {
+		ptr unsafe.Pointer
+		len int
+		cap int
+	}{
+		unsafe.Pointer(a),
+		int(length),
+		int(length),
 	}
-	return highlightError
+	return (*(*[]byte)(unsafe.Pointer(&header)))[:]
 }
 
-type stringSpan struct {
-	s, len int
+func cStrlen(a *byte) int32 {
+	for i := 0; ; i++ {
+		if *(*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(a)) + uintptr(i))) == 0 {
+			return int32(i)
+		}
+	}
 }
+
+func cMemcmp(src1, src2 unsafe.Pointer, n int32) int32 {
+	b1 := toByteSlice((*byte)(src1), n)
+	b2 := toByteSlice((*byte)(src2), n)
+	return int32(bytes.Compare(b1, b2))
+}
+
+func cNotInt32(x int32) int32 {
+	if x == 0 {
+		return 1
+	}
+
+	return 0
+}
+
+func cNotUint32(x uint32) uint32 {
+	if x == 0 {
+		return 1
+	}
+
+	return 0
+}
+
+func cNotInt8(x int8) int8 {
+	if x == 0 {
+		return 1
+	}
+
+	return 0
+}
+
+type highlight int32
+
+const (
+	highlightSection      highlight = 0
+	highlightField                  = 1
+	highlightPrivateKey             = 2
+	highlightPublicKey              = 3
+	highlightPresharedKey           = 4
+	highlightIP                     = 5
+	highlightCidr                   = 6
+	highlightHost                   = 7
+	highlightPort                   = 8
+	highlightMTU                    = 9
+	highlightKeepalive              = 10
+	highlightComment                = 11
+	highlightDelimiter              = 12
+	highlightTable                  = 13
+	highlightFwMark                 = 14
+	highlightSaveConfig             = 15
+	highlightCmd                    = 16
+	highlightError                  = 17
+)
 
 type highlightSpan struct {
-	stringSpan
-	t highlight
+	t   highlight
+	s   uint32
+	len uint32
+}
+type string_span_t struct {
+	s   *byte
+	len uint32
 }
 
-type highlightSpanArray []highlightSpan
+func is_decimal(c byte) int8 {
+	return int8(int8(func(val bool) int32 {
+		if val {
+			return 1
+		} else {
+			return 0
+		}
+	}(int32(c) >= int32('0') && int32(c) <= int32('9'))))
+}
 
-func (a *highlightSpanArray) append(s stringSpan, t highlight) {
-	if s.len == 0 {
-		return
+func is_hexadecimal(c byte) int8 {
+	return int8(int8(func(val bool) int32 {
+		if val {
+			return 1
+		} else {
+			return 0
+		}
+	}(int32(int8(is_decimal(c))) != 0 || int32(c)|int32(32) >= int32('a') && int32(c)|int32(32) <= int32('f'))))
+}
+
+func is_alphabet(c byte) int8 {
+	return int8(int8(func(val bool) int32 {
+		if val {
+			return 1
+		} else {
+			return 0
+		}
+	}(int32(c)|int32(32) >= int32('a') && int32(c)|int32(32) <= int32('z'))))
+}
+
+func is_same(s string_span_t, c *byte) int8 {
+	var len = uint32(uint32(cStrlen(c)))
+	if len != uint32(s.len) {
+		return int8(int8(int32(0)))
 	}
-	*a = append(*a, highlightSpan{stringSpan{s.s, s.len}, t})
+	return int8(int8(cNotInt32(cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), int32(uint32(uint32(len)))))))
 }
 
-type config string
-
-func isDecimal(c uint8) bool {
-	return c >= '0' && c <= '9'
-}
-
-func isHexadecimal(c uint8) bool {
-	return isDecimal(c) || ((c|32) >= 'a' && (c|32) <= 'f')
-}
-
-func isAlphabet(c uint8) bool {
-	return (c|32) >= 'a' && (c|32) <= 'z'
-}
-
-func (cfg config) isSame(s stringSpan, c string) bool {
-	return string(cfg[s.s:s.s+s.len]) == c
-}
-
-func (cfg config) isCaselessSame(s stringSpan, c string) bool {
-	return strings.EqualFold(string(cfg[s.s:s.s+s.len]), c)
-}
-
-func (cfg config) isValidKey(s stringSpan) bool {
-	if s.len != 44 || cfg[s.s+43] != '=' {
-		return false
+func is_caseless_same(s string_span_t, c *byte) int8 {
+	var len = uint32(uint32(cStrlen(c)))
+	if len != uint32(s.len) {
+		return int8(int8(int32(0)))
 	}
-
-	for i := 0; i < 42; i++ {
-		if !isDecimal(cfg[s.s+i]) && !isAlphabet(cfg[s.s+i]) &&
-			cfg[s.s+i] != '/' && cfg[s.s+i] != '+' {
-			return false
+	{
+		var i = uint32(int32(0))
+		for ; i < len; i++ {
+			var a = *((*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(c)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*c))))
+			var b = *((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))
+			if uint32(a)-uint32('a') < uint32(int32(26)) {
+				a &= byte(byte(int32(95)))
+			}
+			if uint32(b)-uint32('a') < uint32(int32(26)) {
+				b &= byte(byte(int32(95)))
+			}
+			if int32(a) != int32(b) {
+				return int8(int8(int32(0)))
+			}
 		}
 	}
-	switch cfg[s.s+42] {
+	return int8(int8(int32(1)))
+}
+
+func is_valid_key(s string_span_t) int8 {
+	if uint32(s.len) != uint32(uint32(int32(44))) || int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(43))*unsafe.Sizeof(*tempVar))
+	}()))) != int32('=') {
+		return int8(int8(int32(0)))
+	}
+	{
+		var i = uint32(int32(0))
+		for ; i < uint32(uint32(int32(42))); i++ {
+			if int8(cNotInt8(is_decimal(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))))) != 0 && int8(cNotInt8(is_alphabet(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))))) != 0 && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('/') && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('+') {
+				return int8(int8(int32(0)))
+			}
+		}
+	}
+	switch int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(42))*unsafe.Sizeof(*tempVar))
+	}()))) {
 	case 'A', 'E', 'I', 'M', 'Q', 'U', 'Y', 'c', 'g', 'k', 'o', 's', 'w', '4', '8', '0':
-		return true
+		{
+		}
+	default:
+		{
+			return int8(int8(int32(0)))
+		}
 	}
-	return false
+	return int8(int8(int32(1)))
 }
 
-func (cfg config) isValidHostname(s stringSpan) bool {
-	numDigit := 0
-	numEntity := s.len
-
-	if s.len > 63 || s.len == 0 {
-		return false
+func is_valid_hostname(s string_span_t) int8 {
+	var num_digit = uint32(int32(0))
+	var num_entity = uint32(s.len)
+	if uint32(s.len) > uint32(uint32(int32(63))) || uint32(cNotUint32(uint32(s.len))) != 0 {
+		return int8(int8(int32(0)))
 	}
-	if cfg[s.s] == '-' || cfg[s.s+s.len-1] == '-' {
-		return false
+	if int32(*s.s) == int32('-') || int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
+	}()))) == int32('-') {
+		return int8(int8(int32(0)))
 	}
-	if cfg[s.s] == '.' || cfg[s.s+s.len-1] == '.' {
-		return false
+	if int32(*s.s) == int32('.') || int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
+	}()))) == int32('.') {
+		return int8(int8(int32(0)))
 	}
-
-	for i := 0; i < s.len; i++ {
-		if isDecimal(cfg[s.s+i]) {
-			numDigit++
-			continue
-		}
-		if cfg[s.s+i] == '.' {
-			numEntity--
-			continue
-		}
-
-		if !isAlphabet(cfg[s.s+i]) && cfg[s.s+i] != '-' {
-			return false
-		}
-
-		if i != 0 && cfg[s.s+i] == '.' && cfg[s.s+i-1] == '.' {
-			return false
+	{
+		var i = uint32(int32(0))
+		for ; i < uint32(s.len); i++ {
+			if int8(is_decimal(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}())))) != 0 {
+				num_digit += 1
+				continue
+			}
+			if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('.') {
+				num_entity -= 1
+				continue
+			}
+			if int8(cNotInt8(is_alphabet(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))))) != 0 && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('-') {
+				return int8(int8(int32(0)))
+			}
+			if uint32(i) != 0 && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('.') && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('.') {
+				return int8(int8(int32(0)))
+			}
 		}
 	}
-	return numDigit != numEntity
+	return int8(int8(func(val bool) int32 {
+		if val {
+			return 1
+		} else {
+			return 0
+		}
+	}(num_digit != num_entity)))
 }
 
-func (cfg config) isValidIPv4(s stringSpan) bool {
-	pos := 0
-	for i := 0; i < 4 && pos < s.len; i++ {
-		val := uint32(0)
-
-		j := 0
-		for ; j < 3 && pos+j < s.len && isDecimal(cfg[s.s+pos+j]); j++ {
-			val = 10*val + uint32(cfg[s.s+pos+j]-'0')
+func is_valid_ipv4(s string_span_t) int8 {
+	{
+		var j uint32
+		var i = uint32(int32(0))
+		var pos = uint32(int32(0))
+		for ; i < uint32(uint32(int32(4))) && pos < uint32(s.len); i++ {
+			var val = uint32(int32(0))
+			for j = uint32(int32(0)); j < uint32(uint32(int32(3))) && pos+j < uint32(s.len) && int32(int8(is_decimal(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
+			}()))))) != 0; j++ {
+				val = uint32(uint32(uint32(int32(10))*uint32(uint32(val)) + uint32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
+				}()))) - uint32('0')))
+			}
+			if j == uint32(uint32(int32(0))) || j > uint32(uint32(int32(1))) && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('0') || val > uint32(uint32(uint32(int32(255)))) {
+				return int8(int8(int32(0)))
+			}
+			if pos+j == uint32(s.len) && i == uint32(uint32(int32(3))) {
+				return int8(int8(int32(1)))
+			}
+			if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('.') {
+				return int8(int8(int32(0)))
+			}
+			pos += j + uint32(uint32(int32(1)))
 		}
-		if j == 0 || (j > 1 && cfg[s.s+pos] == '0') || val > 255 {
-			return false
-		}
-		if pos+j == s.len && i == 3 {
-			return true
-		}
-		if cfg[s.s+pos+j] != '.' {
-			return false
-		}
-		pos += j + 1
 	}
-	return false
+	return int8(int8(int32(0)))
 }
 
-func (cfg config) isValidIPv6(s stringSpan) bool {
-	seenColon := false
-
-	if s.len < 2 {
-		return false
+func is_valid_ipv6(s string_span_t) int8 {
+	var pos = uint32(int32(0))
+	var seen_colon = int8(int8(int32(0)))
+	if uint32(s.len) < uint32(uint32(int32(2))) {
+		return int8(int8(int32(0)))
 	}
-	if cfg[s.s] == ':' && cfg[s.s+1] != ':' {
-		return false
+	if int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
+	}()))) == int32(':') && int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(func() uint32 {
+			pos += 1
+			return pos
+		}())))*unsafe.Sizeof(*tempVar))
+	}()))) != int32(':') {
+		return int8(int8(int32(0)))
 	}
-	if cfg[s.s+s.len-1] == ':' && cfg[s.s+s.len-2] != ':' {
-		return false
+	if int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
+	}()))) == int32(':') && int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(2))))))*unsafe.Sizeof(*tempVar))
+	}()))) != int32(':') {
+		return int8(int8(int32(0)))
 	}
-
-	pos := 1
-	for i := 0; pos < s.len; i++ {
-		if cfg[s.s+pos] == ':' && !seenColon {
-			seenColon = true
-			pos++
-			if pos == s.len {
+	{
+		var j uint32
+		var i = uint32(int32(0))
+		for ; pos < uint32(s.len); i++ {
+			if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32(':') && int8(cNotInt8(seen_colon)) != 0 {
+				seen_colon = int8(int8(int32(1)))
+				if func() uint32 {
+					pos += 1
+					return pos
+				}() == uint32(s.len) {
+					break
+				}
+				if i == uint32(uint32(int32(7))) {
+					return int8(int8(int32(0)))
+				}
+				continue
+			}
+			for j = uint32(int32(0)); ; j++ {
+				if j < uint32(uint32(int32(4))) && pos+j < uint32(s.len) && int32(int8(is_hexadecimal(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
+				}()))))) != 0 {
+					break
+				}
+			}
+			if j == uint32(uint32(int32(0))) {
+				return int8(int8(int32(0)))
+			}
+			if pos+j == uint32(s.len) && (int32(int8(seen_colon)) != 0 || i == uint32(uint32(int32(7)))) {
 				break
 			}
-			if i == 7 {
-				return false
+			if i == uint32(uint32(int32(7))) {
+				return int8(int8(int32(0)))
 			}
-			continue
-		}
-		j := 0
-		for ; j < 4 && pos+j < s.len && isHexadecimal(cfg[s.s+pos+j]); j++ {
-		}
-		if j == 0 {
-			return false
-		}
-		if pos+j == s.len && (seenColon || i == 7) {
-			break
-		}
-		if i == 7 {
-			return false
-		}
-		if cfg[s.s+pos+j] != ':' {
-			if cfg[s.s+pos+j] != '.' || (i < 6 && !seenColon) {
-				return false
+			if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32(':') {
+				if int32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
+				}()))) != int32('.') || i < uint32(uint32(int32(6))) && int8(cNotInt8(seen_colon)) != 0 {
+					return int8(int8(int32(0)))
+				}
+				return is_valid_ipv4(string_span_t{(*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
+				}()), uint32(s.len) - pos})
 			}
-			return cfg.isValidIPv4(stringSpan{s.s + pos, s.len - pos})
+			pos += j + uint32(uint32(int32(1)))
 		}
-		pos += j + 1
 	}
-	return true
+	return int8(int8(int32(1)))
 }
 
-func (cfg config) isValidUint(s stringSpan, supportHex bool, min, max uint64) bool {
-	val := uint64(0)
-
-	/* Bound this around 32 bits, so that we don't have to write overflow logic. */
-	if s.len > 10 || s.len == 0 {
-		return false
+/* Bound this around 32 bits, so that we don't have to write overflow logic. */
+func is_valid_uint(s string_span_t, support_hex int8, min uint64, max uint64) int8 {
+	var val = uint64(int32(0))
+	if uint32(s.len) > uint32(uint32(int32(10))) || uint32(cNotUint32(uint32(s.len))) != 0 {
+		return int8(int8(int32(0)))
 	}
-
-	if supportHex && s.len > 2 && cfg[s.s] == '0' && cfg[s.s+1] == 'x' {
-		for i := 2; i < s.len; i++ {
-			if cfg[s.s+i]-'0' < 10 {
-				val = 16*val + uint64(cfg[s.s+i]-'0')
-			} else if (cfg[s.s+i]|32)-'a' < 6 {
-				val = 16*val + uint64((cfg[s.s+i]|32)-'a'+10)
-			} else {
-				return false
+	if int32(int8(support_hex)) != 0 && uint32(s.len) > uint32(uint32(int32(2))) && int32(*s.s) == int32('0') && int32(*((*byte)(func() unsafe.Pointer {
+		tempVar := s.s
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+	}()))) == int32('x') {
+		{
+			var i = uint32(int32(2))
+			for ; i < uint32(s.len); i++ {
+				if uint32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}())))-uint32('0') < uint32(int32(10)) {
+					val = uint64(uint64(uint32(int32(16))*uint32(uint64(val)) + uint32(int32(*((*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+					}())))-int32('0'))))
+				} else if uint32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}())))|uint32(int32(32))-uint32('a') < uint32(int32(6)) {
+					val = uint64(uint64(uint32(int32(16))*uint32(uint64(val)) + uint32(int32(*((*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+					}())))|int32(32)) - uint32('a') + uint32(int32(10))))
+				} else {
+					return int8(int8(int32(0)))
+				}
 			}
 		}
 	} else {
-		for i := 0; i < s.len; i++ {
-			if !isDecimal(cfg[s.s+i]) {
-				return false
+		{
+			var i = uint32(int32(0))
+			for ; i < uint32(s.len); i++ {
+				if int8(cNotInt8(is_decimal(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}()))))) != 0 {
+					return int8(int8(int32(0)))
+				}
+				val = uint64(uint64(uint32(int32(10))*uint32(uint64(val)) + uint32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}()))) - uint32('0')))
 			}
-			val = 10*val + uint64(cfg[s.s+i]-'0')
 		}
 	}
-	return val <= max && val >= min
+	return int8(int8(func(val bool) int32 {
+		if val {
+			return 1
+		} else {
+			return 0
+		}
+	}(val <= max && val >= min)))
 }
 
-func (cfg config) isValidPort(s stringSpan) bool {
-	return cfg.isValidUint(s, false, 0, 65535)
+func is_valid_port(s string_span_t) int8 {
+	return is_valid_uint(s, int8(int8(int32(0))), uint64(int32(0)), uint64(int32(65535)))
 }
 
-func (cfg config) isValidMTU(s stringSpan) bool {
-	return cfg.isValidUint(s, false, 576, 65535)
+func is_valid_mtu(s string_span_t) int8 {
+	return is_valid_uint(s, int8(int8(int32(0))), uint64(int32(576)), uint64(int32(65535)))
 }
 
-func (cfg config) isValidPersistentKeepAlive(s stringSpan) bool {
-	if cfg.isSame(s, "off") {
-		return true
+func is_valid_persistentkeepalive(s string_span_t) int8 {
+	if int8(is_same(s, &[]byte("off\x00")[0])) != 0 {
+		return int8(int8(int32(1)))
 	}
-	return cfg.isValidUint(s, false, 0, 65535)
+	return is_valid_uint(s, int8(int8(int32(0))), uint64(int32(0)), uint64(int32(65535)))
 }
 
-func (cfg config) isValidFwmark(s stringSpan) bool {
-	if cfg.isSame(s, "off") {
-		return true
+func is_valid_fwmark(s string_span_t) int8 {
+	if int8(is_same(s, &[]byte("off\x00")[0])) != 0 {
+		return int8(int8(int32(1)))
 	}
-	return cfg.isValidUint(s, true, 0, 4294967295)
+	return is_valid_uint(s, int8(int8(int32(1))), uint64(int32(0)), uint64(4294967295))
 }
 
-func (cfg config) isValidTable(s stringSpan) bool {
-	if cfg.isSame(s, "auto") {
-		return true
+/* This pretty much invalidates the other checks, but rt_names.c's
+ * fread_id_name does no validation aside from this. */
+func is_valid_table(s string_span_t) int8 {
+	if int8(is_same(s, &[]byte("auto\x00")[0])) != 0 {
+		return int8(int8(int32(1)))
 	}
-	if cfg.isSame(s, "off") {
-		return true
+	if int8(is_same(s, &[]byte("off\x00")[0])) != 0 {
+		return int8(int8(int32(1)))
 	}
-	/* This pretty much invalidates the other checks, but rt_names.c's
-	 * fread_id_name does no validation aside from this. */
-	if s.len < 512 {
-		return true
+	if uint32(s.len) < uint32(uint32(int32(512))) {
+		return int8(int8(int32(1)))
 	}
-	return cfg.isValidUint(s, false, 0, 4294967295)
+	return is_valid_uint(s, int8(int8(int32(0))), uint64(int32(0)), uint64(4294967295))
 }
 
-func (cfg config) isValidSaveConfig(s stringSpan) bool {
-	return cfg.isSame(s, "true") || cfg.isSame(s, "false")
+func is_valid_saveconfig(s string_span_t) int8 {
+	return int8(int8(func(val bool) int32 {
+		if val {
+			return 1
+		} else {
+			return 0
+		}
+	}(int32(int8(is_same(s, &[]byte("true\x00")[0]))) != 0 || int32(int8(is_same(s, &[]byte("false\x00")[0]))) != 0)))
 }
 
-func (cfg config) isValidPrePostUpDown(s stringSpan) bool {
-	/* It's probably not worthwhile to try to validate a bash expression.
-	 * So instead we just demand non-zero length. */
-	return s.len != 0
+/* It's probably not worthwhile to try to validate a bash expression.
+ * So instead we just demand non-zero length. */
+func is_valid_prepostupdown(s string_span_t) int8 {
+	return int8(int8(uint32(uint32(s.len))))
 }
 
-func (cfg config) isValidScope(s stringSpan) bool {
-	if s.len > 64 || s.len == 0 {
-		return false
+func is_valid_scope(s string_span_t) int8 {
+	if uint32(s.len) > uint32(uint32(int32(64))) || uint32(cNotUint32(uint32(s.len))) != 0 {
+		return int8(int8(int32(0)))
 	}
-	for i := 0; i < s.len; i++ {
-		if !isAlphabet(cfg[s.s+i]) && !isDecimal(cfg[s.s+i]) &&
-			cfg[s.s+i] != '_' && cfg[s.s+i] != '=' && cfg[s.s+i] != '+' &&
-			cfg[s.s+i] != '.' && cfg[s.s+i] != '-' {
-			return false
+	{
+		var i = uint32(int32(0))
+		for ; i < uint32(s.len); i++ {
+			if int8(cNotInt8(is_alphabet(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))))) != 0 && int8(cNotInt8(is_decimal(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))))) != 0 && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('_') && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('=') && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('+') && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('.') && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) != int32('-') {
+				return int8(int8(int32(0)))
+			}
 		}
 	}
-	return true
+	return int8(int8(int32(1)))
 }
 
-func (cfg config) isValidEndpoint(s stringSpan) bool {
-
-	if s.len == 0 {
-		return false
+func is_valid_endpoint(s string_span_t) int8 {
+	if uint32(cNotUint32(uint32(s.len))) != 0 {
+		return int8(int8(int32(0)))
 	}
-
-	if cfg[s.s] == '[' {
-		seenScope := false
-		hostspan := stringSpan{s.s + 1, 0}
-
-		for i := 1; i < s.len; i++ {
-			if cfg[s.s+i] == '%' {
-				if seenScope {
-					return false
-				}
-				seenScope = true
-				if !cfg.isValidIPv6(hostspan) {
-					return false
-				}
-				hostspan = stringSpan{s.s + i + 1, 0}
-			} else if cfg[s.s+i] == ']' {
-				if seenScope {
-					if !cfg.isValidScope(hostspan) {
-						return false
+	if int32(*s.s) == int32('[') {
+		var seen_scope = int8(int8(int32(0)))
+		var hostspan = string_span_t{(*byte)(func() unsafe.Pointer {
+			tempVar := s.s
+			return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+		}()), uint32(int32(0))}
+		{
+			var i = uint32(int32(1))
+			for ; i < uint32(s.len); i++ {
+				if int32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}()))) == int32('%') {
+					if int8(seen_scope) != 0 {
+						return int8(int8(int32(0)))
 					}
-				} else if !cfg.isValidIPv6(hostspan) {
-					return false
+					seen_scope = int8(int8(int32(1)))
+					if int8(cNotInt8(is_valid_ipv6(hostspan))) != 0 {
+						return int8(int8(int32(0)))
+					}
+					hostspan = string_span_t{(*byte)(func() unsafe.Pointer {
+						tempVar := (*byte)(func() unsafe.Pointer {
+							tempVar := s.s
+							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+						}())
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+					}()), uint32(int32(0))}
+				} else if int32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}()))) == int32(']') {
+					if int8(seen_scope) != 0 {
+						if int8(cNotInt8(is_valid_scope(hostspan))) != 0 {
+							return int8(int8(int32(0)))
+						}
+					} else if int8(cNotInt8(is_valid_ipv6(hostspan))) != 0 {
+						return int8(int8(int32(0)))
+					}
+					if i == uint32(s.len)-uint32(uint32(int32(1))) || int32(*((*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i+uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
+					}()))) != int32(':') {
+						return int8(int8(int32(0)))
+					}
+					return is_valid_port(string_span_t{(*byte)(func() unsafe.Pointer {
+						tempVar := (*byte)(func() unsafe.Pointer {
+							tempVar := s.s
+							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+						}())
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(2))*unsafe.Sizeof(*tempVar))
+					}()), uint32(s.len) - i - uint32(uint32(int32(2)))})
+				} else {
+					hostspan.len += uint32(uint32(int32(1)))
 				}
-				if i == s.len-1 || cfg[s.s+i+1] != ':' {
-					return false
-				}
-				return cfg.isValidPort(stringSpan{s.s + i + 2, s.len - i - 2})
-			} else {
-				hostspan.len++
 			}
 		}
-		return false
+		return int8(int8(int32(0)))
 	}
-	for i := 0; i < s.len; i++ {
-		if cfg[s.s+i] == ':' {
-			host := stringSpan{s.s, i}
-			port := stringSpan{s.s + i + 1, s.len - i - 1}
-			return cfg.isValidPort(port) && (cfg.isValidIPv4(host) || cfg.isValidHostname(host))
+	{
+		var i = uint32(int32(0))
+		for ; i < uint32(s.len); i++ {
+			if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32(':') {
+				var host = string_span_t{s.s, uint32(i)}
+				var port = string_span_t{(*byte)(func() unsafe.Pointer {
+					tempVar := (*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+					}())
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+				}()), uint32(s.len) - i - uint32(uint32(int32(1)))}
+				return int8(int8(func(val bool) int32 {
+					if val {
+						return 1
+					} else {
+						return 0
+					}
+				}(int32(int8(is_valid_port(port))) != 0 && (int32(int8(is_valid_ipv4(host))) != 0 || int32(int8(is_valid_hostname(host))) != 0))))
+			}
 		}
 	}
-	return false
+	return int8(int8(int32(0)))
 }
 
-func (cfg config) isValidNetwork(s stringSpan) bool {
-	for i := 0; i < s.len; i++ {
-		if cfg[s.s+i] == '/' {
-			ip := stringSpan{s.s, i}
-			cidr := stringSpan{s.s + i + 1, s.len - i - 1}
-			cidrval := uint16(0)
-
-			if cidr.len > 3 || cidr.len == 0 {
-				return false
-			}
-
-			for j := 0; j < cidr.len; j++ {
-				if !isDecimal(cfg[cidr.s+j]) {
-					return false
+func is_valid_network(s string_span_t) int8 {
+	{
+		var i = uint32(int32(0))
+		for ; i < uint32(s.len); i++ {
+			if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('/') {
+				var ip = string_span_t{s.s, uint32(i)}
+				var cidr = string_span_t{(*byte)(func() unsafe.Pointer {
+					tempVar := (*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+					}())
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+				}()), uint32(s.len) - i - uint32(uint32(int32(1)))}
+				var cidrval = uint16(int32(0))
+				if uint32(cidr.len) > uint32(uint32(int32(3))) || uint32(cNotUint32(uint32(cidr.len))) != 0 {
+					return int8(int8(int32(0)))
 				}
-				cidrval = 10*cidrval + uint16(cfg[cidr.s+j]-'0')
+				{
+					var j = uint32(int32(0))
+					for ; j < uint32(cidr.len); j++ {
+						if int8(cNotInt8(is_decimal(*((*byte)(func() unsafe.Pointer {
+							tempVar := cidr.s
+							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(j)))*unsafe.Sizeof(*tempVar))
+						}()))))) != 0 {
+							return int8(int8(int32(0)))
+						}
+						cidrval = uint16(uint16(uint16(int32(10)*int32(uint16(uint16(cidrval))) + int32(*((*byte)(func() unsafe.Pointer {
+							tempVar := cidr.s
+							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(j)))*unsafe.Sizeof(*tempVar))
+						}()))) - int32('0'))))
+					}
+				}
+				if int8(is_valid_ipv4(ip)) != 0 {
+					return int8(int8(func(val bool) int32 {
+						if val {
+							return 1
+						} else {
+							return 0
+						}
+					}(int32(uint16(uint16(cidrval))) <= int32(32))))
+				} else if int8(is_valid_ipv6(ip)) != 0 {
+					return int8(int8(func(val bool) int32 {
+						if val {
+							return 1
+						} else {
+							return 0
+						}
+					}(int32(uint16(uint16(cidrval))) <= int32(128))))
+				}
+				return int8(int8(int32(0)))
 			}
-			if cfg.isValidIPv4(ip) {
-				return cidrval <= 32
-			} else if cfg.isValidIPv6(ip) {
-				return cidrval <= 128
-			}
-			return false
 		}
 	}
-	return cfg.isValidIPv4(s) || cfg.isValidIPv6(s)
+	return int8(int8(func(val bool) int32 {
+		if val {
+			return 1
+		} else {
+			return 0
+		}
+	}(int32(int8(is_valid_ipv4(s))) != 0 || int32(int8(is_valid_ipv6(s))) != 0)))
 }
 
-type field int
+type field int32
 
 const (
-	fieldInterfaceSection field = iota
-	fieldPrivateKey
-	fieldListenPort
-	fieldAddress
-	fieldDNS
-	fieldMTU
-	fieldFwMark
-	fieldTable
-	fieldPreUp
-	fieldPostUp
-	fieldPreDown
-	fieldPostDown
-	fieldSaveConfig
-
-	fieldPeerSection
-	fieldPublicKey
-	fieldPresharedKey
-	fieldAllowedIPs
-	fieldEndpoint
-	fieldPersistentKeepalive
-
-	fieldInvalid
+	InterfaceSection    field = 0
+	PrivateKey                = 1
+	ListenPort                = 2
+	Address                   = 3
+	DNS                       = 4
+	MTU                       = 5
+	FwMark                    = 6
+	Table                     = 7
+	PreUp                     = 8
+	PostUp                    = 9
+	PreDown                   = 10
+	PostDown                  = 11
+	SaveConfig                = 12
+	PeerSection               = 13
+	PublicKey                 = 14
+	PresharedKey              = 15
+	AllowedIPs                = 16
+	Endpoint                  = 17
+	PersistentKeepalive       = 18
+	Invalid                   = 19
 )
 
-func (t field) section() field {
-	if t > fieldInterfaceSection && t < fieldPeerSection {
-		return fieldInterfaceSection
+func section_for_field(t field) field {
+	if uint32(int32(t)) > uint32(int32(InterfaceSection)) && uint32(int32(t)) < uint32(int32(PeerSection)) {
+		return InterfaceSection
 	}
-	if t > fieldPeerSection && t < fieldInvalid {
-		return fieldPeerSection
+	if uint32(int32(t)) > uint32(int32(PeerSection)) && uint32(int32(t)) < uint32(int32(Invalid)) {
+		return PeerSection
 	}
-	return fieldInvalid
+	return Invalid
 }
 
-func (cfg config) field(s stringSpan) field {
-	switch {
-	case cfg.isCaselessSame(s, "PrivateKey"):
-		return fieldPrivateKey
-	case cfg.isCaselessSame(s, "ListenPort"):
-		return fieldListenPort
-	case cfg.isCaselessSame(s, "Address"):
-		return fieldAddress
-	case cfg.isCaselessSame(s, "DNS"):
-		return fieldDNS
-	case cfg.isCaselessSame(s, "MTU"):
-		return fieldMTU
-	case cfg.isCaselessSame(s, "PublicKey"):
-		return fieldPublicKey
-	case cfg.isCaselessSame(s, "PresharedKey"):
-		return fieldPresharedKey
-	case cfg.isCaselessSame(s, "AllowedIPs"):
-		return fieldAllowedIPs
-	case cfg.isCaselessSame(s, "Endpoint"):
-		return fieldEndpoint
-	case cfg.isCaselessSame(s, "PersistentKeepalive"):
-		return fieldPersistentKeepalive
-	case cfg.isCaselessSame(s, "FwMark"):
-		return fieldFwMark
-	case cfg.isCaselessSame(s, "Table"):
-		return fieldTable
-	case cfg.isCaselessSame(s, "PreUp"):
-		return fieldPreUp
-	case cfg.isCaselessSame(s, "PostUp"):
-		return fieldPostUp
-	case cfg.isCaselessSame(s, "PreDown"):
-		return fieldPreDown
-	case cfg.isCaselessSame(s, "PostDown"):
-		return fieldPostDown
-	case cfg.isCaselessSame(s, "SaveConfig"):
-		return fieldSaveConfig
-	}
-	return fieldInvalid
-}
-
-func (cfg config) section(s stringSpan) field {
-	if cfg.isCaselessSame(s, "[Peer]") {
-		return fieldPeerSection
-	}
-	if cfg.isCaselessSame(s, "[Interface]") {
-		return fieldInterfaceSection
-	}
-	return fieldInvalid
-}
-
-func (cfg config) highlightMultivalueValue(ret *highlightSpanArray, s stringSpan, section field) {
-	switch section {
-	case fieldDNS:
-		if cfg.isValidIPv4(s) || cfg.isValidIPv6(s) {
-			ret.append(s, highlightIP)
-		} else if cfg.isValidHostname(s) {
-			ret.append(s, highlightHost)
-		} else {
-			ret.append(s, highlightError)
+func get_field(s string_span_t) field {
+	for {
+		if int8(is_caseless_same(s, &[]byte("PrivateKey\x00")[0])) != 0 {
+			return PrivateKey
 		}
-	case fieldAddress, fieldAllowedIPs:
-		if !cfg.isValidNetwork(s) {
-			ret.append(s, highlightError)
+		if cNotInt32(int32(0)) != 0 {
 			break
 		}
-		slash := 0
-		for ; slash < s.len; slash++ {
-			if cfg[s.s+slash] == '/' {
-				break
-			}
-		}
-		if slash == s.len {
-			ret.append(s, highlightIP)
-		} else {
-			ret.append(stringSpan{s.s, slash}, highlightIP)
-			ret.append(stringSpan{s.s + slash, 1}, highlightDelimiter)
-			ret.append(stringSpan{s.s + slash + 1, s.len - slash - 1}, highlightCidr)
-		}
-	default:
-		ret.append(s, highlightError)
 	}
-}
-
-func (cfg config) highlightMultivalue(ret *highlightSpanArray, s stringSpan, section field) {
-	currentSpan := stringSpan{s.s, 0}
-	lenAtLastSpace := 0
-
-	for i := 0; i < s.len; i++ {
-		if cfg[s.s+i] == ',' {
-			currentSpan.len = lenAtLastSpace
-			cfg.highlightMultivalueValue(ret, currentSpan, section)
-			ret.append(stringSpan{s.s + i, 1}, highlightDelimiter)
-			lenAtLastSpace = 0
-			currentSpan = stringSpan{s.s + i + 1, 0}
-		} else if cfg[s.s+i] == ' ' || cfg[s.s+i] == '\t' {
-			if s.s+i == currentSpan.s && currentSpan.len == 0 {
-				currentSpan.s++
-			} else {
-				currentSpan.len++
-			}
-		} else {
-			currentSpan.len++
-			lenAtLastSpace = currentSpan.len
+	for {
+		if int8(is_caseless_same(s, &[]byte("ListenPort\x00")[0])) != 0 {
+			return ListenPort
 		}
-	}
-	currentSpan.len = lenAtLastSpace
-	if currentSpan.len != 0 {
-		cfg.highlightMultivalueValue(ret, currentSpan, section)
-	} else if (*ret)[len(*ret)-1].t == highlightDelimiter {
-		(*ret)[len(*ret)-1].t = highlightError
-	}
-}
-
-func (cfg config) highlightValue(ret *highlightSpanArray, s stringSpan, section field) {
-	switch section {
-	case fieldPrivateKey:
-		ret.append(s, validateHighlight(cfg.isValidKey(s), highlightPrivateKey))
-	case fieldPublicKey:
-		ret.append(s, validateHighlight(cfg.isValidKey(s), highlightPublicKey))
-	case fieldPresharedKey:
-		ret.append(s, validateHighlight(cfg.isValidKey(s), highlightPresharedKey))
-	case fieldMTU:
-		ret.append(s, validateHighlight(cfg.isValidMTU(s), highlightMTU))
-	case fieldSaveConfig:
-		ret.append(s, validateHighlight(cfg.isValidSaveConfig(s), highlightSaveConfig))
-	case fieldFwMark:
-		ret.append(s, validateHighlight(cfg.isValidFwmark(s), highlightFwMark))
-	case fieldTable:
-		ret.append(s, validateHighlight(cfg.isValidTable(s), highlightTable))
-	case fieldPreUp, fieldPostUp, fieldPreDown, fieldPostDown:
-		ret.append(s, validateHighlight(cfg.isValidPrePostUpDown(s), highlightCmd))
-	case fieldListenPort:
-		ret.append(s, validateHighlight(cfg.isValidPort(s), highlightPort))
-	case fieldPersistentKeepalive:
-		ret.append(s, validateHighlight(cfg.isValidPersistentKeepAlive(s), highlightKeepalive))
-	case fieldEndpoint:
-		if !cfg.isValidEndpoint(s) {
-			ret.append(s, highlightError)
+		if cNotInt32(int32(0)) != 0 {
 			break
 		}
-		colon := s.len
-		for colon > 0 {
-			colon--
-			if cfg[s.s+colon] == ':' {
-				break
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("Address\x00")[0])) != 0 {
+			return Address
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("DNS\x00")[0])) != 0 {
+			return DNS
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("MTU\x00")[0])) != 0 {
+			return MTU
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("PublicKey\x00")[0])) != 0 {
+			return PublicKey
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("PresharedKey\x00")[0])) != 0 {
+			return PresharedKey
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("AllowedIPs\x00")[0])) != 0 {
+			return AllowedIPs
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("Endpoint\x00")[0])) != 0 {
+			return Endpoint
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("PersistentKeepalive\x00")[0])) != 0 {
+			return PersistentKeepalive
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("FwMark\x00")[0])) != 0 {
+			return FwMark
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("Table\x00")[0])) != 0 {
+			return Table
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("PreUp\x00")[0])) != 0 {
+			return PreUp
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("PostUp\x00")[0])) != 0 {
+			return PostUp
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("PreDown\x00")[0])) != 0 {
+			return PreDown
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("PostDown\x00")[0])) != 0 {
+			return PostDown
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+	for {
+		if int8(is_caseless_same(s, &[]byte("SaveConfig\x00")[0])) != 0 {
+			return SaveConfig
+		}
+		if cNotInt32(int32(0)) != 0 {
+			break
+		}
+	}
+
+	return Invalid
+}
+
+func get_sectiontype(s string_span_t) field {
+	if int8(is_caseless_same(s, &[]byte("[Peer]\x00")[0])) != 0 {
+		return PeerSection
+	}
+	if int8(is_caseless_same(s, &[]byte("[Interface]\x00")[0])) != 0 {
+		return InterfaceSection
+	}
+	return Invalid
+}
+
+type highlight_span_array struct {
+	spans *highlightSpan
+	len   int
+	cap   int
+}
+
+func add_to_array(a *highlight_span_array, hs *highlightSpan) {
+	slice := *(*[]highlightSpan)(unsafe.Pointer(a))
+	slice = append(slice, *hs)
+	a.spans = &slice[0]
+	a.len = len(slice)
+	a.cap = cap(slice)
+}
+
+func append_highlight_span(a *highlight_span_array, o *byte, s string_span_t, t highlight) int8 {
+	if uint32(cNotUint32(uint32(s.len))) != 0 {
+		return int8(int8(int32(1)))
+	}
+	add_to_array(a, &highlightSpan{t, uint32(int64(uintptr(unsafe.Pointer(s.s))) - int64(uintptr(unsafe.Pointer(o)))), uint32(s.len)})
+	return int8(int8(int32(1)))
+}
+
+func highlight_multivalue_value(ret *highlight_span_array, parent string_span_t, s string_span_t, section field) {
+	switch uint32(int32(section)) {
+	case uint32(DNS):
+		{
+			if int32(int8(is_valid_ipv4(s))) != 0 || int32(int8(is_valid_ipv6(s))) != 0 {
+				append_highlight_span(ret, parent.s, s, highlightIP)
+			} else if int8(is_valid_hostname(s)) != 0 {
+				append_highlight_span(ret, parent.s, s, highlightHost)
+			} else {
+				append_highlight_span(ret, parent.s, s, highlightError)
 			}
 		}
-		ret.append(stringSpan{s.s, colon}, highlightHost)
-		ret.append(stringSpan{s.s + colon, 1}, highlightDelimiter)
-		ret.append(stringSpan{s.s + colon + 1, s.len - colon - 1}, highlightPort)
-	case fieldAddress, fieldDNS, fieldAllowedIPs:
-		cfg.highlightMultivalue(ret, s, section)
+	case uint32(Address), uint32(AllowedIPs):
+		{
+			var slash uint32
+			if int8(cNotInt8(is_valid_network(s))) != 0 {
+				append_highlight_span(ret, parent.s, s, highlightError)
+				break
+			}
+			for slash = uint32(int32(0)); slash < uint32(s.len); slash++ {
+				if int32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(slash)))*unsafe.Sizeof(*tempVar))
+				}()))) == int32('/') {
+					break
+				}
+			}
+			if slash == uint32(s.len) {
+				append_highlight_span(ret, parent.s, s, highlightIP)
+			} else {
+				append_highlight_span(ret, parent.s, string_span_t{s.s, uint32(slash)}, highlightIP)
+				append_highlight_span(ret, parent.s, string_span_t{(*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(slash)))*unsafe.Sizeof(*tempVar))
+				}()), uint32(int32(1))}, highlightDelimiter)
+				append_highlight_span(ret, parent.s, string_span_t{(*byte)(func() unsafe.Pointer {
+					tempVar := (*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(slash)))*unsafe.Sizeof(*tempVar))
+					}())
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+				}()), uint32(s.len) - slash - uint32(uint32(int32(1)))}, highlightCidr)
+			}
+		}
 	default:
-		ret.append(s, highlightError)
+		{
+			append_highlight_span(ret, parent.s, s, highlightError)
+		}
 	}
 }
 
-func highlightConfig(cfg string) []highlightSpan {
-	c := config(cfg)
-	ret := highlightSpanArray(make([]highlightSpan, 0, 500))
-	currentSpan := stringSpan{}
-	currentSection := fieldInvalid
-	currentField := fieldInvalid
-	const (
-		OnNone = iota
-		OnKey
-		OnValue
-		OnComment
-		OnSection
-	)
-	state := OnNone
-	lenAtLastSpace := 0
-	equalsLocation := 0
-
-	for i := 0; i <= len(cfg); i++ {
-		if i == len(cfg) || cfg[i] == '\n' || (state != OnComment && cfg[i] == '#') {
-			if state == OnKey {
-				currentSpan.len = lenAtLastSpace
-				ret.append(currentSpan, highlightError)
-			} else if state == OnValue {
-				if currentSpan.len != 0 {
-					ret.append(stringSpan{equalsLocation, 1}, highlightDelimiter)
-					currentSpan.len = lenAtLastSpace
-					c.highlightValue(&ret, currentSpan, currentField)
+func highlight_multivalue(ret *highlight_span_array, parent string_span_t, s string_span_t, section field) {
+	var current_span = string_span_t{s.s, uint32(int32(0))}
+	var len_at_last_space = uint32(int32(0))
+	{
+		var i = uint32(int32(0))
+		for ; i < uint32(s.len); i++ {
+			if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32(',') {
+				current_span.len = len_at_last_space
+				highlight_multivalue_value(ret, string_span_t(parent), string_span_t(current_span), section)
+				append_highlight_span(ret, parent.s, string_span_t{(*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}()), uint32(int32(1))}, highlightDelimiter)
+				len_at_last_space = uint32(int32(0))
+				current_span = string_span_t{(*byte)(func() unsafe.Pointer {
+					tempVar := (*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+					}())
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+				}()), uint32(int32(0))}
+			} else if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32(' ') || int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('\t') {
+				if int64(uintptr(unsafe.Pointer(&*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}()))))) == int64(uintptr(unsafe.Pointer(current_span.s))) && uint32(cNotUint32(uint32(current_span.len))) != 0 {
+					current_span.s = (*byte)(func() unsafe.Pointer {
+						tempVar := current_span.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(1)*unsafe.Sizeof(*tempVar))
+					}())
 				} else {
-					ret.append(stringSpan{equalsLocation, 1}, highlightError)
+					current_span.len += uint32(uint32(int32(1)))
 				}
-			} else if state == OnSection {
-				currentSpan.len = lenAtLastSpace
-				currentSection = c.section(currentSpan)
-				ret.append(currentSpan, validateHighlight(currentSection != fieldInvalid, highlightSection))
-			} else if state == OnComment {
-				ret.append(currentSpan, highlightComment)
-			}
-			if i == len(cfg) {
-				break
-			}
-			lenAtLastSpace = 0
-			currentField = fieldInvalid
-			if cfg[i] == '#' {
-				currentSpan = stringSpan{i, 1}
-				state = OnComment
 			} else {
-				currentSpan = stringSpan{i + 1, 0}
-				state = OnNone
+				len_at_last_space = func() uint32 {
+					tempVar := &current_span.len
+					*tempVar += 1
+					return *tempVar
+				}()
 			}
-		} else if state == OnComment {
-			currentSpan.len++
-		} else if cfg[i] == ' ' || cfg[i] == '\t' {
-			if i == currentSpan.s && currentSpan.len == 0 {
-				currentSpan.s++
-			} else {
-				currentSpan.len++
-			}
-		} else if cfg[i] == '=' && state == OnKey {
-			currentSpan.len = lenAtLastSpace
-			currentField = c.field(currentSpan)
-			section := currentField.section()
-			ret.append(currentSpan, validateHighlight(section != fieldInvalid && currentField != fieldInvalid && section == currentSection, highlightField))
-			equalsLocation = i
-			currentSpan = stringSpan{i + 1, 0}
-			state = OnValue
-		} else {
-			if state == OnNone {
-				if cfg[i] == '[' {
-					state = OnSection
-				} else {
-					state = OnKey
-				}
-			}
-			currentSpan.len++
-			lenAtLastSpace = currentSpan.len
 		}
 	}
-	return ret
+	current_span.len = len_at_last_space
+	if uint32(uint32(current_span.len)) != 0 {
+		highlight_multivalue_value(ret, string_span_t(parent), string_span_t(current_span), section)
+	} else if uint32(int32((*((*highlightSpan)(func() unsafe.Pointer {
+		tempVar := (*ret).spans
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32((*ret).len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
+	}()))).t)) == uint32(int32(highlightDelimiter)) {
+		(*((*highlightSpan)(func() unsafe.Pointer {
+			tempVar := (*ret).spans
+			return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32((*ret).len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
+		}()))).t = highlightError
+	}
+}
+
+func highlight_value(ret *highlight_span_array, parent string_span_t, s string_span_t, section field) {
+	switch uint32(int32(section)) {
+	case uint32(PrivateKey):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_key(s))) != 0 {
+					return int32(highlightPrivateKey)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(PublicKey):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_key(s))) != 0 {
+					return int32(highlightPublicKey)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(PresharedKey):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_key(s))) != 0 {
+					return int32(highlightPresharedKey)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(MTU):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_mtu(s))) != 0 {
+					return int32(highlightMTU)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(SaveConfig):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_saveconfig(s))) != 0 {
+					return int32(highlightSaveConfig)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(FwMark):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_fwmark(s))) != 0 {
+					return int32(highlightFwMark)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(Table):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_table(s))) != 0 {
+					return int32(highlightTable)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(PreUp), uint32(PostUp), uint32(PreDown), uint32(PostDown):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_prepostupdown(s))) != 0 {
+					return int32(highlightCmd)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+
+	case uint32(ListenPort):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_port(s))) != 0 {
+					return int32(highlightPort)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(PersistentKeepalive):
+		{
+			append_highlight_span(ret, parent.s, s, highlight(func() int32 {
+				if int32(int8(is_valid_persistentkeepalive(s))) != 0 {
+					return int32(highlightKeepalive)
+				} else {
+					return int32(highlightError)
+				}
+			}()))
+		}
+	case uint32(Endpoint):
+		{
+			var colon uint32
+			if int8(cNotInt8(is_valid_endpoint(s))) != 0 {
+				append_highlight_span(ret, parent.s, s, highlightError)
+				break
+			}
+			for colon = uint32(s.len); func() uint32 {
+				defer func() {
+					colon -= 1
+				}()
+				return colon
+			}() > uint32(uint32(int32(0))); {
+				if int32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(colon)))*unsafe.Sizeof(*tempVar))
+				}()))) == int32(':') {
+					break
+				}
+			}
+			append_highlight_span(ret, parent.s, string_span_t{s.s, uint32(colon)}, highlightHost)
+			append_highlight_span(ret, parent.s, string_span_t{(*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(colon)))*unsafe.Sizeof(*tempVar))
+			}()), uint32(int32(1))}, highlightDelimiter)
+			append_highlight_span(ret, parent.s, string_span_t{(*byte)(func() unsafe.Pointer {
+				tempVar := (*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(colon)))*unsafe.Sizeof(*tempVar))
+				}())
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+			}()), uint32(s.len) - colon - uint32(uint32(int32(1)))}, highlightPort)
+		}
+	case uint32(Address), uint32(DNS), uint32(AllowedIPs):
+		{
+			highlight_multivalue(ret, string_span_t(parent), string_span_t(s), section)
+		}
+	default:
+		{
+			append_highlight_span(ret, parent.s, s, highlightError)
+		}
+	}
+}
+
+type parser_state int32
+
+const (
+	OnNone    parser_state = 0
+	OnKey                  = 1
+	OnValue                = 2
+	OnComment              = 3
+	OnSection              = 4
+)
+
+func highlight_config(config *byte) []highlightSpan {
+	var ret highlight_span_array
+	var s = string_span_t{config, uint32(uint32(cStrlen(config)))}
+	var current_span = string_span_t{s.s, uint32(int32(0))}
+	var current_section field = Invalid
+	var current_field field = Invalid
+	var state = OnNone
+	var len_at_last_space = uint32(int32(0))
+	var equals_location = uint32(int32(0))
+	{
+		var i = uint32(int32(0))
+		for ; i <= uint32(s.len); i++ {
+			if i == uint32(s.len) || int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('\n') || uint32(int32(state)) != uint32(int32(OnComment)) && int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('#') {
+				if uint32(int32(state)) == uint32(int32(OnKey)) {
+					current_span.len = len_at_last_space
+					append_highlight_span(&ret, s.s, current_span, highlightError)
+				} else if uint32(int32(state)) == uint32(int32(OnValue)) {
+					if uint32(uint32(current_span.len)) != 0 {
+						append_highlight_span(&ret, s.s, string_span_t{(*byte)(func() unsafe.Pointer {
+							tempVar := s.s
+							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(equals_location)))*unsafe.Sizeof(*tempVar))
+						}()), uint32(int32(1))}, highlightDelimiter)
+						current_span.len = len_at_last_space
+						highlight_value(&ret, string_span_t(s), string_span_t(current_span), current_field)
+					} else {
+						append_highlight_span(&ret, s.s, string_span_t{(*byte)(func() unsafe.Pointer {
+							tempVar := s.s
+							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(equals_location)))*unsafe.Sizeof(*tempVar))
+						}()), uint32(int32(1))}, highlightError)
+					}
+				} else if uint32(int32(state)) == uint32(int32(OnSection)) {
+					current_span.len = len_at_last_space
+					current_section = get_sectiontype(current_span)
+					append_highlight_span(&ret, s.s, current_span, highlight(func() int32 {
+						if uint32(int32(current_section)) == uint32(int32(Invalid)) {
+							return int32(highlightError)
+						} else {
+							return int32(highlightSection)
+						}
+					}()))
+				} else if uint32(int32(state)) == uint32(int32(OnComment)) {
+					append_highlight_span(&ret, s.s, current_span, highlightComment)
+				}
+				if i == uint32(s.len) {
+					break
+				}
+				len_at_last_space = uint32(int32(0))
+				current_field = Invalid
+				if int32(*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}()))) == int32('#') {
+					current_span = string_span_t{(*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+					}()), uint32(int32(1))}
+					state = OnComment
+				} else {
+					current_span = string_span_t{(*byte)(func() unsafe.Pointer {
+						tempVar := (*byte)(func() unsafe.Pointer {
+							tempVar := s.s
+							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+						}())
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+					}()), uint32(int32(0))}
+					state = OnNone
+				}
+			} else if uint32(int32(state)) == uint32(int32(OnComment)) {
+				current_span.len += uint32(uint32(int32(1)))
+			} else if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32(' ') || int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('\t') {
+				if int64(uintptr(unsafe.Pointer(&*((*byte)(func() unsafe.Pointer {
+					tempVar := s.s
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+				}()))))) == int64(uintptr(unsafe.Pointer(current_span.s))) && uint32(cNotUint32(uint32(current_span.len))) != 0 {
+					current_span.s = (*byte)(func() unsafe.Pointer {
+						tempVar := current_span.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(1)*unsafe.Sizeof(*tempVar))
+					}())
+				} else {
+					current_span.len += uint32(uint32(int32(1)))
+				}
+			} else if int32(*((*byte)(func() unsafe.Pointer {
+				tempVar := s.s
+				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+			}()))) == int32('=') && uint32(int32(state)) == uint32(int32(OnKey)) {
+				current_span.len = len_at_last_space
+				current_field = get_field(current_span)
+				var section = section_for_field(current_field)
+				if uint32(int32(section)) == uint32(int32(Invalid)) || uint32(int32(current_field)) == uint32(int32(Invalid)) || uint32(int32(section)) != uint32(int32(current_section)) {
+					append_highlight_span(&ret, s.s, current_span, highlightError)
+				} else {
+					append_highlight_span(&ret, s.s, current_span, highlightField)
+				}
+				equals_location = i
+				current_span = string_span_t{(*byte)(func() unsafe.Pointer {
+					tempVar := (*byte)(func() unsafe.Pointer {
+						tempVar := s.s
+						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+					}())
+					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
+				}()), uint32(int32(0))}
+				state = OnValue
+			} else {
+				if uint32(int32(state)) == uint32(int32(OnNone)) {
+					state = parser_state(func() int32 {
+						if int32(*((*byte)(func() unsafe.Pointer {
+							tempVar := s.s
+							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
+						}()))) == int32('[') {
+							return int32(OnSection)
+						} else {
+							return int32(OnKey)
+						}
+					}())
+				}
+				len_at_last_space = func() uint32 {
+					tempVar := &current_span.len
+					*tempVar += 1
+					return *tempVar
+				}()
+			}
+		}
+	}
+	return *(*[]highlightSpan)(unsafe.Pointer(&ret))
+}
+
+func highlightConfig(config string) []highlightSpan {
+	return highlight_config(&append([]byte(config), 0)[0])
 }
