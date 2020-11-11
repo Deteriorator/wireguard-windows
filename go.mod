@@ -4,12 +4,12 @@ go 1.15
 
 require (
 	github.com/lxn/walk v0.0.0-20201110160827-18ea5e372cdb
-	github.com/lxn/win v0.0.0-20201105135849-85a11ff06ebc
+	github.com/lxn/win v0.0.0-20201111105847-2a20daff6a55
 	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897
 	golang.org/x/net v0.0.0-20201110031124-69a78807bb2b
-	golang.org/x/sys v0.0.0-20201109165425-215b40eba54c
+	golang.org/x/sys v0.0.0-20201110211018-35f3e6cf4a65
 	golang.org/x/text v0.3.4
-	golang.zx2c4.com/wireguard v0.0.20200321-0.20201107205632-82128c47d90a
+	golang.zx2c4.com/wireguard v0.0.20200321-0.20201111175144-60b3766b89b9
 )
 
 replace (
