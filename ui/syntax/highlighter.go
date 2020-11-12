@@ -210,11 +210,11 @@ func isValidIPv6(s stringSpan) bool {
 	if (s.len) < (2) {
 		return false
 	}
-	if (*at(s.s, pos)) == (':') && (*at(s.s, func() int {
-		pos += 1
-		return pos
-	}())) != (':') {
-		return false
+	if *at(s.s, pos) == ':' {
+		pos++
+		if *at(s.s, pos) != ':' {
+			return false
+		}
 	}
 	if (*at(s.s, ((s.len) - (1)))) == (':') && (*at(s.s, ((s.len) - (2)))) != (':') {
 		return false
@@ -225,10 +225,8 @@ func isValidIPv6(s stringSpan) bool {
 		for ; pos < (s.len); i++ {
 			if (*at(s.s, pos)) == (':') && !seenColon {
 				seenColon = true
-				if func() int {
-					pos += 1
-					return pos
-				}() == (s.len) {
+				pos++
+				if pos == s.len {
 					break
 				}
 				if i == (7) {
@@ -606,11 +604,8 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 					currentSpan.len += (1)
 				}
 			} else {
-				lenAtLastSpace = func() int {
-					tempVar := &currentSpan.len
-					*tempVar += 1
-					return *tempVar
-				}()
+				currentSpan.len++
+				lenAtLastSpace = currentSpan.len
 			}
 		}
 	}
@@ -738,12 +733,8 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 				appendHighlightSpan(ret, parent.s, s, highlightError)
 				break
 			}
-			for colon = (s.len); func() int {
-				defer func() {
-					colon -= 1
-				}()
-				return colon
-			}() > (0); {
+			for colon = s.len; colon > 0; {
+				colon--
 				if (*at(s.s, colon)) == (':') {
 					break
 				}
@@ -852,11 +843,8 @@ func highlightConfigInt(config *byte) []highlightSpan {
 						}
 					}())
 				}
-				lenAtLastSpace = func() int {
-					tempVar := &currentSpan.len
-					*tempVar += 1
-					return *tempVar
-				}()
+				currentSpan.len++
+				lenAtLastSpace = currentSpan.len
 			}
 		}
 	}
