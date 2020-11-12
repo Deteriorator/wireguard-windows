@@ -255,10 +255,7 @@ func isValidIPv6(s stringSpan) bool {
 				if int32(*at(s.s, pos+j)) != int32('.') || i < uint32(uint32(int32(6))) && !seenColon {
 					return false
 				}
-				return isValidIPv4(stringSpan{(*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
-				}()), uint32(s.len) - pos})
+				return isValidIPv4(stringSpan{at(s.s, pos), uint32(s.len) - pos})
 			}
 			pos += j + uint32(uint32(int32(1)))
 		}
@@ -367,10 +364,7 @@ func isValidEndpoint(s stringSpan) bool {
 	}
 	if int32(*s.s) == int32('[') {
 		var seenScope = false
-		var hostspan = stringSpan{(*byte)(func() unsafe.Pointer {
-			tempVar := s.s
-			return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-		}()), uint32(int32(0))}
+		var hostspan = stringSpan{at(s.s, 1), uint32(int32(0))}
 		{
 			var i = uint32(int32(1))
 			for ; i < uint32(s.len); i++ {
@@ -382,13 +376,7 @@ func isValidEndpoint(s stringSpan) bool {
 					if !isValidIPv6(hostspan) {
 						return false
 					}
-					hostspan = stringSpan{(*byte)(func() unsafe.Pointer {
-						tempVar := (*byte)(func() unsafe.Pointer {
-							tempVar := s.s
-							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-						}())
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-					}()), uint32(int32(0))}
+					hostspan = stringSpan{at(s.s, i+1), uint32(int32(0))}
 				} else if int32(*at(s.s, i)) == int32(']') {
 					if seenScope {
 						if !isValidScope(hostspan) {
@@ -400,13 +388,7 @@ func isValidEndpoint(s stringSpan) bool {
 					if i == uint32(s.len)-uint32(uint32(int32(1))) || int32(*at(s.s, uint32(i+uint32(uint32(int32(1)))))) != int32(':') {
 						return false
 					}
-					return isValidPort(stringSpan{(*byte)(func() unsafe.Pointer {
-						tempVar := (*byte)(func() unsafe.Pointer {
-							tempVar := s.s
-							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-						}())
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(2))*unsafe.Sizeof(*tempVar))
-					}()), uint32(s.len) - i - uint32(uint32(int32(2)))})
+					return isValidPort(stringSpan{at(s.s, i+2), uint32(s.len) - i - uint32(uint32(int32(2)))})
 				} else {
 					hostspan.len += uint32(uint32(int32(1)))
 				}
@@ -419,13 +401,7 @@ func isValidEndpoint(s stringSpan) bool {
 		for ; i < uint32(s.len); i++ {
 			if int32(*at(s.s, i)) == int32(':') {
 				var host = stringSpan{s.s, uint32(i)}
-				var port = stringSpan{(*byte)(func() unsafe.Pointer {
-					tempVar := (*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-					}())
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-				}()), uint32(s.len) - i - uint32(uint32(int32(1)))}
+				var port = stringSpan{at(s.s, i+1), uint32(s.len) - i - uint32(uint32(int32(1)))}
 				return isValidPort(port) && (isValidIPv4(host) || isValidHostname(host))
 			}
 		}
@@ -439,13 +415,7 @@ func isValidNetwork(s stringSpan) bool {
 		for ; i < uint32(s.len); i++ {
 			if int32(*at(s.s, i)) == int32('/') {
 				var ip = stringSpan{s.s, uint32(i)}
-				var cidr = stringSpan{(*byte)(func() unsafe.Pointer {
-					tempVar := (*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-					}())
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-				}()), uint32(s.len) - i - uint32(uint32(int32(1)))}
+				var cidr = stringSpan{at(s.s, i+1), uint32(s.len) - i - uint32(uint32(int32(1)))}
 				var cidrval = uint16(int32(0))
 				if uint32(cidr.len) > uint32(uint32(int32(3))) || cidr.len == 0 {
 					return false
@@ -606,17 +576,8 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 				appendHighlightSpan(ret, parent.s, s, highlightIP)
 			} else {
 				appendHighlightSpan(ret, parent.s, stringSpan{s.s, uint32(slash)}, highlightIP)
-				appendHighlightSpan(ret, parent.s, stringSpan{(*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(slash)))*unsafe.Sizeof(*tempVar))
-				}()), uint32(int32(1))}, highlightDelimiter)
-				appendHighlightSpan(ret, parent.s, stringSpan{(*byte)(func() unsafe.Pointer {
-					tempVar := (*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(slash)))*unsafe.Sizeof(*tempVar))
-					}())
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-				}()), uint32(s.len) - slash - uint32(uint32(int32(1)))}, highlightCidr)
+				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, slash), uint32(int32(1))}, highlightDelimiter)
+				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, slash+1), uint32(s.len) - slash - uint32(uint32(int32(1)))}, highlightCidr)
 			}
 		}
 	default:
@@ -635,24 +596,12 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 			if int32(*at(s.s, i)) == int32(',') {
 				currentSpan.len = lenAtLastSpace
 				highlightMultivalueValue(ret, stringSpan(parent), stringSpan(currentSpan), section)
-				appendHighlightSpan(ret, parent.s, stringSpan{(*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()), uint32(int32(1))}, highlightDelimiter)
+				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, i), uint32(int32(1))}, highlightDelimiter)
 				lenAtLastSpace = uint32(int32(0))
-				currentSpan = stringSpan{(*byte)(func() unsafe.Pointer {
-					tempVar := (*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-					}())
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-				}()), uint32(int32(0))}
+				currentSpan = stringSpan{at(s.s, i+1), uint32(int32(0))}
 			} else if int32(*at(s.s, i)) == int32(' ') || int32(*at(s.s, i)) == int32('\t') {
 				if int64(uintptr(unsafe.Pointer(&*at(s.s, i)))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
-					currentSpan.s = (*byte)(func() unsafe.Pointer {
-						tempVar := currentSpan.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(1)*unsafe.Sizeof(*tempVar))
-					}())
+					currentSpan.s = at(currentSpan.s, 1)
 				} else {
 					currentSpan.len += uint32(uint32(int32(1)))
 				}
@@ -800,17 +749,8 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 				}
 			}
 			appendHighlightSpan(ret, parent.s, stringSpan{s.s, uint32(colon)}, highlightHost)
-			appendHighlightSpan(ret, parent.s, stringSpan{(*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(colon)))*unsafe.Sizeof(*tempVar))
-			}()), uint32(int32(1))}, highlightDelimiter)
-			appendHighlightSpan(ret, parent.s, stringSpan{(*byte)(func() unsafe.Pointer {
-				tempVar := (*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(colon)))*unsafe.Sizeof(*tempVar))
-				}())
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-			}()), uint32(s.len) - colon - uint32(uint32(int32(1)))}, highlightPort)
+			appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, colon), uint32(int32(1))}, highlightDelimiter)
+			appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, colon+1), uint32(s.len) - colon - uint32(uint32(int32(1)))}, highlightPort)
 		}
 	case uint32(Address), uint32(DNS), uint32(AllowedIPs):
 		{
@@ -851,17 +791,11 @@ func highlightConfigInt(config *byte) []highlightSpan {
 					appendHighlightSpan(&ret, s.s, currentSpan, highlightError)
 				} else if uint32(int32(state)) == uint32(int32(OnValue)) {
 					if uint32(uint32(currentSpan.len)) != 0 {
-						appendHighlightSpan(&ret, s.s, stringSpan{(*byte)(func() unsafe.Pointer {
-							tempVar := s.s
-							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(equalsLocation)))*unsafe.Sizeof(*tempVar))
-						}()), uint32(int32(1))}, highlightDelimiter)
+						appendHighlightSpan(&ret, s.s, stringSpan{at(s.s, equalsLocation), uint32(int32(1))}, highlightDelimiter)
 						currentSpan.len = lenAtLastSpace
 						highlightValue(&ret, stringSpan(s), stringSpan(currentSpan), currentField)
 					} else {
-						appendHighlightSpan(&ret, s.s, stringSpan{(*byte)(func() unsafe.Pointer {
-							tempVar := s.s
-							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(equalsLocation)))*unsafe.Sizeof(*tempVar))
-						}()), uint32(int32(1))}, highlightError)
+						appendHighlightSpan(&ret, s.s, stringSpan{at(s.s, equalsLocation), uint32(int32(1))}, highlightError)
 					}
 				} else if uint32(int32(state)) == uint32(int32(OnSection)) {
 					currentSpan.len = lenAtLastSpace
@@ -882,29 +816,17 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				lenAtLastSpace = uint32(int32(0))
 				currentField = Invalid
 				if int32(*at(s.s, i)) == int32('#') {
-					currentSpan = stringSpan{(*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-					}()), uint32(int32(1))}
+					currentSpan = stringSpan{at(s.s, i), uint32(int32(1))}
 					state = OnComment
 				} else {
-					currentSpan = stringSpan{(*byte)(func() unsafe.Pointer {
-						tempVar := (*byte)(func() unsafe.Pointer {
-							tempVar := s.s
-							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-						}())
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-					}()), uint32(int32(0))}
+					currentSpan = stringSpan{at(s.s, i+1), uint32(int32(0))}
 					state = OnNone
 				}
 			} else if uint32(int32(state)) == uint32(int32(OnComment)) {
 				currentSpan.len += uint32(uint32(int32(1)))
 			} else if int32(*at(s.s, i)) == int32(' ') || int32(*at(s.s, i)) == int32('\t') {
 				if int64(uintptr(unsafe.Pointer(&*at(s.s, i)))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
-					currentSpan.s = (*byte)(func() unsafe.Pointer {
-						tempVar := currentSpan.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(1)*unsafe.Sizeof(*tempVar))
-					}())
+					currentSpan.s = at(currentSpan.s, 1)
 				} else {
 					currentSpan.len += uint32(uint32(int32(1)))
 				}
@@ -918,13 +840,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 					appendHighlightSpan(&ret, s.s, currentSpan, highlightField)
 				}
 				equalsLocation = i
-				currentSpan = stringSpan{(*byte)(func() unsafe.Pointer {
-					tempVar := (*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-					}())
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-				}()), uint32(int32(0))}
+				currentSpan = stringSpan{at(s.s, i+1), uint32(int32(0))}
 				state = OnValue
 			} else {
 				if uint32(int32(state)) == uint32(int32(OnNone)) {
