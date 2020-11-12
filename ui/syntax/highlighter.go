@@ -39,6 +39,10 @@ func cMemcmp(src1, src2 unsafe.Pointer, n int32) int32 {
 	return int32(bytes.Compare(b1, b2))
 }
 
+func at(a *byte, i uint32) *byte {
+	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(a)) + uintptr(i)*unsafe.Sizeof(*a)))
+}
+
 type highlight int32
 
 const (
@@ -102,10 +106,7 @@ func isCaselessSame(s stringSpan, c *byte) bool {
 		var i = uint32(int32(0))
 		for ; i < len; i++ {
 			var a = *((*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(c)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*c))))
-			var b = *((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))
+			var b = *at(s.s, i)
 			if uint32(a)-uint32('a') < uint32(int32(26)) {
 				a &= byte(byte(int32(95)))
 			}
@@ -121,36 +122,18 @@ func isCaselessSame(s stringSpan, c *byte) bool {
 }
 
 func isValidKey(s stringSpan) bool {
-	if uint32(s.len) != uint32(uint32(int32(44))) || int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(43))*unsafe.Sizeof(*tempVar))
-	}()))) != int32('=') {
+	if uint32(s.len) != uint32(uint32(int32(44))) || int32(*at(s.s, 43)) != int32('=') {
 		return false
 	}
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(uint32(int32(42))); i++ {
-			if !isDecimal(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) && !isAlphabet(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('/') && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('+') {
+			if !isDecimal(*at(s.s, i)) && !isAlphabet(*at(s.s, i)) && int32(*at(s.s, i)) != int32('/') && int32(*at(s.s, i)) != int32('+') {
 				return false
 			}
 		}
 	}
-	switch int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(42))*unsafe.Sizeof(*tempVar))
-	}()))) {
+	switch int32(*at(s.s, 42)) {
 	case 'A', 'E', 'I', 'M', 'Q', 'U', 'Y', 'c', 'g', 'k', 'o', 's', 'w', '4', '8', '0':
 		{
 		}
@@ -168,51 +151,27 @@ func isValidHostname(s stringSpan) bool {
 	if uint32(s.len) > uint32(uint32(int32(63))) || s.len == 0 {
 		return false
 	}
-	if int32(*s.s) == int32('-') || int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
-	}()))) == int32('-') {
+	if int32(*s.s) == int32('-') || int32(*at(s.s, uint32(uint32(s.len)-uint32(uint32(int32(1)))))) == int32('-') {
 		return false
 	}
-	if int32(*s.s) == int32('.') || int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
-	}()))) == int32('.') {
+	if int32(*s.s) == int32('.') || int32(*at(s.s, uint32(uint32(s.len)-uint32(uint32(int32(1)))))) == int32('.') {
 		return false
 	}
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(s.len); i++ {
-			if isDecimal(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) {
+			if isDecimal(*at(s.s, i)) {
 				num_digit += 1
 				continue
 			}
-			if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('.') {
+			if int32(*at(s.s, i)) == int32('.') {
 				num_entity -= 1
 				continue
 			}
-			if !isAlphabet(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('-') {
+			if !isAlphabet(*at(s.s, i)) && int32(*at(s.s, i)) != int32('-') {
 				return false
 			}
-			if uint32(i) != 0 && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('.') && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('.') {
+			if uint32(i) != 0 && int32(*at(s.s, i)) == int32('.') && int32(*at(s.s, uint32(i-uint32(uint32(int32(1)))))) == int32('.') {
 				return false
 			}
 		}
@@ -227,28 +186,16 @@ func isValidIPv4(s stringSpan) bool {
 		var pos = uint32(int32(0))
 		for ; i < uint32(uint32(int32(4))) && pos < uint32(s.len); i++ {
 			var val = uint32(int32(0))
-			for j = uint32(int32(0)); j < uint32(uint32(int32(3))) && pos+j < uint32(s.len) && isDecimal(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
-			}()))); j++ {
-				val = uint32(uint32(uint32(int32(10))*uint32(uint32(val)) + uint32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
-				}()))) - uint32('0')))
+			for j = uint32(int32(0)); j < uint32(uint32(int32(3))) && pos+j < uint32(s.len) && isDecimal(*at(s.s, pos+j)); j++ {
+				val = uint32(uint32(uint32(int32(10))*uint32(uint32(val)) + uint32(*at(s.s, pos+j)) - uint32('0')))
 			}
-			if j == uint32(uint32(int32(0))) || j > uint32(uint32(int32(1))) && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('0') || val > uint32(uint32(uint32(int32(255)))) {
+			if j == uint32(uint32(int32(0))) || j > uint32(uint32(int32(1))) && int32(*at(s.s, pos)) == int32('0') || val > uint32(uint32(uint32(int32(255)))) {
 				return false
 			}
 			if pos+j == uint32(s.len) && i == uint32(uint32(int32(3))) {
 				return true
 			}
-			if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('.') {
+			if int32(*at(s.s, pos+j)) != int32('.') {
 				return false
 			}
 			pos += j + uint32(uint32(int32(1)))
@@ -263,35 +210,20 @@ func isValidIPv6(s stringSpan) bool {
 	if uint32(s.len) < uint32(uint32(int32(2))) {
 		return false
 	}
-	if int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
-	}()))) == int32(':') && int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(func() uint32 {
-			pos += 1
-			return pos
-		}())))*unsafe.Sizeof(*tempVar))
-	}()))) != int32(':') {
+	if int32(*at(s.s, pos)) == int32(':') && int32(*at(s.s, func() uint32 {
+		pos += 1
+		return pos
+	}())) != int32(':') {
 		return false
 	}
-	if int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
-	}()))) == int32(':') && int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(2))))))*unsafe.Sizeof(*tempVar))
-	}()))) != int32(':') {
+	if int32(*at(s.s, uint32(uint32(s.len)-uint32(uint32(int32(1)))))) == int32(':') && int32(*at(s.s, uint32(uint32(s.len)-uint32(uint32(int32(2)))))) != int32(':') {
 		return false
 	}
 	{
 		var j uint32
 		var i = uint32(int32(0))
 		for ; pos < uint32(s.len); i++ {
-			if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32(':') && !seenColon {
+			if int32(*at(s.s, pos)) == int32(':') && !seenColon {
 				seenColon = true
 				if func() uint32 {
 					pos += 1
@@ -305,10 +237,7 @@ func isValidIPv6(s stringSpan) bool {
 				continue
 			}
 			for j = uint32(int32(0)); ; j++ {
-				if j < uint32(uint32(int32(4))) && pos+j < uint32(s.len) && isHexadecimal(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
-				}()))) {
+				if j < uint32(uint32(int32(4))) && pos+j < uint32(s.len) && isHexadecimal(*at(s.s, pos+j)) {
 					continue
 				}
 				break
@@ -322,14 +251,8 @@ func isValidIPv6(s stringSpan) bool {
 			if i == uint32(uint32(int32(7))) {
 				return false
 			}
-			if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32(':') {
-				if int32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
-				}()))) != int32('.') || i < uint32(uint32(int32(6))) && !seenColon {
+			if int32(*at(s.s, pos+j)) != int32(':') {
+				if int32(*at(s.s, pos+j)) != int32('.') || i < uint32(uint32(int32(6))) && !seenColon {
 					return false
 				}
 				return isValidIPv4(stringSpan{(*byte)(func() unsafe.Pointer {
@@ -349,29 +272,14 @@ func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
 	if uint32(s.len) > uint32(uint32(int32(10))) || s.len == 0 {
 		return false
 	}
-	if support_hex && uint32(s.len) > uint32(uint32(int32(2))) && int32(*s.s) == int32('0') && int32(*((*byte)(func() unsafe.Pointer {
-		tempVar := s.s
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
-	}()))) == int32('x') {
+	if support_hex && uint32(s.len) > uint32(uint32(int32(2))) && int32(*s.s) == int32('0') && int32(*at(s.s, 1)) == int32('x') {
 		{
 			var i = uint32(int32(2))
 			for ; i < uint32(s.len); i++ {
-				if uint32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}())))-uint32('0') < uint32(int32(10)) {
-					val = uint64(uint64(uint32(int32(16))*uint32(uint64(val)) + uint32(int32(*((*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-					}())))-int32('0'))))
-				} else if uint32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}())))|uint32(int32(32))-uint32('a') < uint32(int32(6)) {
-					val = uint64(uint64(uint32(int32(16))*uint32(uint64(val)) + uint32(int32(*((*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-					}())))|int32(32)) - uint32('a') + uint32(int32(10))))
+				if uint32(*at(s.s, i))-uint32('0') < uint32(int32(10)) {
+					val = uint64(uint64(uint32(int32(16))*uint32(uint64(val)) + uint32(int32(*at(s.s, i))-int32('0'))))
+				} else if uint32(*at(s.s, i))|uint32(int32(32))-uint32('a') < uint32(int32(6)) {
+					val = uint64(uint64(uint32(int32(16))*uint32(uint64(val)) + uint32(int32(*at(s.s, i))|int32(32)) - uint32('a') + uint32(int32(10))))
 				} else {
 					return false
 				}
@@ -381,16 +289,10 @@ func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
 		{
 			var i = uint32(int32(0))
 			for ; i < uint32(s.len); i++ {
-				if !isDecimal(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))) {
+				if !isDecimal(*at(s.s, i)) {
 					return false
 				}
-				val = uint64(uint64(uint32(int32(10))*uint32(uint64(val)) + uint32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))) - uint32('0')))
+				val = uint64(uint64(uint32(int32(10))*uint32(uint64(val)) + uint32(*at(s.s, i)) - uint32('0')))
 			}
 		}
 	}
@@ -451,28 +353,7 @@ func isValidScope(s stringSpan) bool {
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(s.len); i++ {
-			if isAlphabet(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) && !isDecimal(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('_') && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('=') && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('+') && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('.') && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) != int32('-') {
+			if isAlphabet(*at(s.s, i)) && !isDecimal(*at(s.s, i)) && int32(*at(s.s, i)) != int32('_') && int32(*at(s.s, i)) != int32('=') && int32(*at(s.s, i)) != int32('+') && int32(*at(s.s, i)) != int32('.') && int32(*at(s.s, i)) != int32('-') {
 				return false
 			}
 		}
@@ -493,10 +374,7 @@ func isValidEndpoint(s stringSpan) bool {
 		{
 			var i = uint32(int32(1))
 			for ; i < uint32(s.len); i++ {
-				if int32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))) == int32('%') {
+				if int32(*at(s.s, i)) == int32('%') {
 					if seenScope {
 						return false
 					}
@@ -511,10 +389,7 @@ func isValidEndpoint(s stringSpan) bool {
 						}())
 						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
 					}()), uint32(int32(0))}
-				} else if int32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))) == int32(']') {
+				} else if int32(*at(s.s, i)) == int32(']') {
 					if seenScope {
 						if !isValidScope(hostspan) {
 							return false
@@ -522,10 +397,7 @@ func isValidEndpoint(s stringSpan) bool {
 					} else if !isValidIPv6(hostspan) {
 						return false
 					}
-					if i == uint32(s.len)-uint32(uint32(int32(1))) || int32(*((*byte)(func() unsafe.Pointer {
-						tempVar := s.s
-						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i+uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
-					}()))) != int32(':') {
+					if i == uint32(s.len)-uint32(uint32(int32(1))) || int32(*at(s.s, uint32(i+uint32(uint32(int32(1)))))) != int32(':') {
 						return false
 					}
 					return isValidPort(stringSpan{(*byte)(func() unsafe.Pointer {
@@ -545,10 +417,7 @@ func isValidEndpoint(s stringSpan) bool {
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(s.len); i++ {
-			if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32(':') {
+			if int32(*at(s.s, i)) == int32(':') {
 				var host = stringSpan{s.s, uint32(i)}
 				var port = stringSpan{(*byte)(func() unsafe.Pointer {
 					tempVar := (*byte)(func() unsafe.Pointer {
@@ -568,10 +437,7 @@ func isValidNetwork(s stringSpan) bool {
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(s.len); i++ {
-			if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('/') {
+			if int32(*at(s.s, i)) == int32('/') {
 				var ip = stringSpan{s.s, uint32(i)}
 				var cidr = stringSpan{(*byte)(func() unsafe.Pointer {
 					tempVar := (*byte)(func() unsafe.Pointer {
@@ -587,16 +453,10 @@ func isValidNetwork(s stringSpan) bool {
 				{
 					var j = uint32(int32(0))
 					for ; j < uint32(cidr.len); j++ {
-						if !isDecimal(*((*byte)(func() unsafe.Pointer {
-							tempVar := cidr.s
-							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(j)))*unsafe.Sizeof(*tempVar))
-						}()))) {
+						if !isDecimal(*at(cidr.s, j)) {
 							return false
 						}
-						cidrval = uint16(uint16(uint16(int32(10)*int32(uint16(uint16(cidrval))) + int32(*((*byte)(func() unsafe.Pointer {
-							tempVar := cidr.s
-							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(j)))*unsafe.Sizeof(*tempVar))
-						}()))) - int32('0'))))
+						cidrval = uint16(uint16(uint16(int32(10)*int32(uint16(uint16(cidrval))) + int32(*at(cidr.s, j)) - int32('0'))))
 					}
 				}
 				if isValidIPv4(ip) {
@@ -738,10 +598,7 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 				break
 			}
 			for slash = uint32(int32(0)); slash < uint32(s.len); slash++ {
-				if int32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(slash)))*unsafe.Sizeof(*tempVar))
-				}()))) == int32('/') {
+				if int32(*at(s.s, slash)) == int32('/') {
 					break
 				}
 			}
@@ -775,10 +632,7 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(s.len); i++ {
-			if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32(',') {
+			if int32(*at(s.s, i)) == int32(',') {
 				currentSpan.len = lenAtLastSpace
 				highlightMultivalueValue(ret, stringSpan(parent), stringSpan(currentSpan), section)
 				appendHighlightSpan(ret, parent.s, stringSpan{(*byte)(func() unsafe.Pointer {
@@ -793,17 +647,8 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 					}())
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
 				}()), uint32(int32(0))}
-			} else if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32(' ') || int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('\t') {
-				if int64(uintptr(unsafe.Pointer(&*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
+			} else if int32(*at(s.s, i)) == int32(' ') || int32(*at(s.s, i)) == int32('\t') {
+				if int64(uintptr(unsafe.Pointer(&*at(s.s, i)))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = (*byte)(func() unsafe.Pointer {
 						tempVar := currentSpan.s
 						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(1)*unsafe.Sizeof(*tempVar))
@@ -950,10 +795,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 				}()
 				return colon
 			}() > uint32(uint32(int32(0))); {
-				if int32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(colon)))*unsafe.Sizeof(*tempVar))
-				}()))) == int32(':') {
+				if int32(*at(s.s, colon)) == int32(':') {
 					break
 				}
 			}
@@ -1003,13 +845,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 	{
 		var i = uint32(int32(0))
 		for ; i <= uint32(s.len); i++ {
-			if i == uint32(s.len) || int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('\n') || uint32(int32(state)) != uint32(int32(OnComment)) && int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('#') {
+			if i == uint32(s.len) || int32(*at(s.s, i)) == int32('\n') || uint32(int32(state)) != uint32(int32(OnComment)) && int32(*at(s.s, i)) == int32('#') {
 				if uint32(int32(state)) == uint32(int32(OnKey)) {
 					currentSpan.len = lenAtLastSpace
 					appendHighlightSpan(&ret, s.s, currentSpan, highlightError)
@@ -1045,10 +881,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				}
 				lenAtLastSpace = uint32(int32(0))
 				currentField = Invalid
-				if int32(*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))) == int32('#') {
+				if int32(*at(s.s, i)) == int32('#') {
 					currentSpan = stringSpan{(*byte)(func() unsafe.Pointer {
 						tempVar := s.s
 						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
@@ -1066,17 +899,8 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				}
 			} else if uint32(int32(state)) == uint32(int32(OnComment)) {
 				currentSpan.len += uint32(uint32(int32(1)))
-			} else if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32(' ') || int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('\t') {
-				if int64(uintptr(unsafe.Pointer(&*((*byte)(func() unsafe.Pointer {
-					tempVar := s.s
-					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
+			} else if int32(*at(s.s, i)) == int32(' ') || int32(*at(s.s, i)) == int32('\t') {
+				if int64(uintptr(unsafe.Pointer(&*at(s.s, i)))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = (*byte)(func() unsafe.Pointer {
 						tempVar := currentSpan.s
 						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(1)*unsafe.Sizeof(*tempVar))
@@ -1084,10 +908,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				} else {
 					currentSpan.len += uint32(uint32(int32(1)))
 				}
-			} else if int32(*((*byte)(func() unsafe.Pointer {
-				tempVar := s.s
-				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32('=') && uint32(int32(state)) == uint32(int32(OnKey)) {
+			} else if int32(*at(s.s, i)) == int32('=') && uint32(int32(state)) == uint32(int32(OnKey)) {
 				currentSpan.len = lenAtLastSpace
 				currentField = getField(currentSpan)
 				var section = sectionForField(currentField)
@@ -1108,10 +929,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 			} else {
 				if uint32(int32(state)) == uint32(int32(OnNone)) {
 					state = parserState(func() int32 {
-						if int32(*((*byte)(func() unsafe.Pointer {
-							tempVar := s.s
-							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-						}()))) == int32('[') {
+						if int32(*at(s.s, i)) == int32('[') {
 							return int32(OnSection)
 						} else {
 							return int32(OnKey)
