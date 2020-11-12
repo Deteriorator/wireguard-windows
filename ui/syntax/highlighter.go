@@ -368,10 +368,10 @@ func isValidIPv6(s stringSpan) bool {
 }
 
 /* Bound this around 32 bits, so that we don't have to write overflow logic. */
-func isValidUint(s stringSpan, support_hex int8, min uint64, max uint64) int8 {
+func isValidUint(s stringSpan, support_hex int8, min uint64, max uint64) bool {
 	var val = uint64(int32(0))
 	if uint32(s.len) > uint32(uint32(int32(10))) || cNotUint32(uint32(s.len)) {
-		return int8(int8(int32(0)))
+		return false
 	}
 	if int32(int8(support_hex)) != 0 && uint32(s.len) > uint32(uint32(int32(2))) && int32(*s.s) == int32('0') && int32(*((*byte)(func() unsafe.Pointer {
 		tempVar := s.s
@@ -397,7 +397,7 @@ func isValidUint(s stringSpan, support_hex int8, min uint64, max uint64) int8 {
 						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 					}())))|int32(32)) - uint32('a') + uint32(int32(10))))
 				} else {
-					return int8(int8(int32(0)))
+					return false
 				}
 			}
 		}
@@ -409,7 +409,7 @@ func isValidUint(s stringSpan, support_hex int8, min uint64, max uint64) int8 {
 					tempVar := s.s
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 				}()))) {
-					return int8(int8(int32(0)))
+					return false
 				}
 				val = uint64(uint64(uint32(int32(10))*uint32(uint64(val)) + uint32(*((*byte)(func() unsafe.Pointer {
 					tempVar := s.s
@@ -418,71 +418,59 @@ func isValidUint(s stringSpan, support_hex int8, min uint64, max uint64) int8 {
 			}
 		}
 	}
-	return int8(int8(func(val bool) int32 {
-		if val {
-			return 1
-		} else {
-			return 0
-		}
-	}(val <= max && val >= min)))
+	return val <= max && val >= min
 }
 
-func isValidPort(s stringSpan) int8 {
+func isValidPort(s stringSpan) bool {
 	return isValidUint(s, int8(int8(int32(0))), uint64(int32(0)), uint64(int32(65535)))
 }
 
-func isValidMTU(s stringSpan) int8 {
+func isValidMTU(s stringSpan) bool {
 	return isValidUint(s, int8(int8(int32(0))), uint64(int32(576)), uint64(int32(65535)))
 }
 
-func isValidPersistentKeepAlive(s stringSpan) int8 {
+func isValidPersistentKeepAlive(s stringSpan) bool {
 	if isSame(s, &[]byte("off\x00")[0]) {
-		return int8(int8(int32(1)))
+		return true
 	}
 	return isValidUint(s, int8(int8(int32(0))), uint64(int32(0)), uint64(int32(65535)))
 }
 
-func isValidFwMark(s stringSpan) int8 {
+func isValidFwMark(s stringSpan) bool {
 	if isSame(s, &[]byte("off\x00")[0]) {
-		return int8(int8(int32(1)))
+		return true
 	}
 	return isValidUint(s, int8(int8(int32(1))), uint64(int32(0)), uint64(4294967295))
 }
 
 /* This pretty much invalidates the other checks, but rt_names.c's
  * fread_id_name does no validation aside from this. */
-func isValidTable(s stringSpan) int8 {
+func isValidTable(s stringSpan) bool {
 	if isSame(s, &[]byte("auto\x00")[0]) {
-		return int8(int8(int32(1)))
+		return true
 	}
 	if isSame(s, &[]byte("off\x00")[0]) {
-		return int8(int8(int32(1)))
+		return true
 	}
 	if uint32(s.len) < uint32(uint32(int32(512))) {
-		return int8(int8(int32(1)))
+		return true
 	}
 	return isValidUint(s, int8(int8(int32(0))), uint64(int32(0)), uint64(4294967295))
 }
 
-func isValidSaveConfig(s stringSpan) int8 {
-	return int8(int8(func(val bool) int32 {
-		if val {
-			return 1
-		} else {
-			return 0
-		}
-	}(isSame(s, &[]byte("true\x00")[0]) || isSame(s, &[]byte("false\x00")[0]))))
+func isValidSaveConfig(s stringSpan) bool {
+	return isSame(s, &[]byte("true\x00")[0]) || isSame(s, &[]byte("false\x00")[0])
 }
 
 /* It's probably not worthwhile to try to validate a bash expression.
  * So instead we just demand non-zero length. */
-func isValidPrePostUpDown(s stringSpan) int8 {
-	return int8(int8(uint32(uint32(s.len))))
+func isValidPrePostUpDown(s stringSpan) bool {
+	return s.len != 0
 }
 
-func isValidScope(s stringSpan) int8 {
+func isValidScope(s stringSpan) bool {
 	if uint32(s.len) > uint32(uint32(int32(64))) || cNotUint32(uint32(s.len)) {
-		return int8(int8(int32(0)))
+		return false
 	}
 	{
 		var i = uint32(int32(0))
@@ -509,16 +497,16 @@ func isValidScope(s stringSpan) int8 {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 			}()))) != int32('-') {
-				return int8(int8(int32(0)))
+				return false
 			}
 		}
 	}
-	return int8(int8(int32(1)))
+	return true
 }
 
-func isValidEndpoint(s stringSpan) int8 {
+func isValidEndpoint(s stringSpan) bool {
 	if cNotUint32(uint32(s.len)) {
-		return int8(int8(int32(0)))
+		return false
 	}
 	if int32(*s.s) == int32('[') {
 		var seenScope = int8(int8(int32(0)))
@@ -534,11 +522,11 @@ func isValidEndpoint(s stringSpan) int8 {
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 				}()))) == int32('%') {
 					if int8(seenScope) != 0 {
-						return int8(int8(int32(0)))
+						return false
 					}
 					seenScope = int8(int8(int32(1)))
 					if !isValidIPv6(hostspan) {
-						return int8(int8(int32(0)))
+						return false
 					}
 					hostspan = stringSpan{(*byte)(func() unsafe.Pointer {
 						tempVar := (*byte)(func() unsafe.Pointer {
@@ -552,17 +540,17 @@ func isValidEndpoint(s stringSpan) int8 {
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 				}()))) == int32(']') {
 					if int8(seenScope) != 0 {
-						if cNotInt8(isValidScope(hostspan)) {
-							return int8(int8(int32(0)))
+						if !isValidScope(hostspan) {
+							return false
 						}
 					} else if !isValidIPv6(hostspan) {
-						return int8(int8(int32(0)))
+						return false
 					}
 					if i == uint32(s.len)-uint32(uint32(int32(1))) || int32(*((*byte)(func() unsafe.Pointer {
 						tempVar := s.s
 						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i+uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
 					}()))) != int32(':') {
-						return int8(int8(int32(0)))
+						return false
 					}
 					return isValidPort(stringSpan{(*byte)(func() unsafe.Pointer {
 						tempVar := (*byte)(func() unsafe.Pointer {
@@ -576,7 +564,7 @@ func isValidEndpoint(s stringSpan) int8 {
 				}
 			}
 		}
-		return int8(int8(int32(0)))
+		return false
 	}
 	{
 		var i = uint32(int32(0))
@@ -593,17 +581,11 @@ func isValidEndpoint(s stringSpan) int8 {
 					}())
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
 				}()), uint32(s.len) - i - uint32(uint32(int32(1)))}
-				return int8(int8(func(val bool) int32 {
-					if val {
-						return 1
-					} else {
-						return 0
-					}
-				}(int32(int8(isValidPort(port))) != 0 && (isValidIPv4(host) || isValidHostname(host)))))
+				return isValidPort(port) && (isValidIPv4(host) || isValidHostname(host))
 			}
 		}
 	}
-	return int8(int8(int32(0)))
+	return false
 }
 
 func isValidNetwork(s stringSpan) int8 {
@@ -1030,7 +1012,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(MTU):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidMTU(s))) != 0 {
+				if isValidMTU(s) {
 					return int32(highlightMTU)
 				} else {
 					return int32(highlightError)
@@ -1040,7 +1022,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(SaveConfig):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidSaveConfig(s))) != 0 {
+				if isValidSaveConfig(s) {
 					return int32(highlightSaveConfig)
 				} else {
 					return int32(highlightError)
@@ -1050,7 +1032,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(FwMark):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidFwMark(s))) != 0 {
+				if isValidFwMark(s) {
 					return int32(highlightFwMark)
 				} else {
 					return int32(highlightError)
@@ -1060,7 +1042,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(Table):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidTable(s))) != 0 {
+				if isValidTable(s) {
 					return int32(highlightTable)
 				} else {
 					return int32(highlightError)
@@ -1070,7 +1052,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(PreUp), uint32(PostUp), uint32(PreDown), uint32(PostDown):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidPrePostUpDown(s))) != 0 {
+				if isValidPrePostUpDown(s) {
 					return int32(highlightCmd)
 				} else {
 					return int32(highlightError)
@@ -1081,7 +1063,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(ListenPort):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidPort(s))) != 0 {
+				if isValidPort(s) {
 					return int32(highlightPort)
 				} else {
 					return int32(highlightError)
@@ -1091,7 +1073,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(PersistentKeepalive):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidPersistentKeepAlive(s))) != 0 {
+				if isValidPersistentKeepAlive(s) {
 					return int32(highlightKeepalive)
 				} else {
 					return int32(highlightError)
@@ -1101,7 +1083,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(Endpoint):
 		{
 			var colon uint32
-			if cNotInt8(isValidEndpoint(s)) {
+			if !isValidEndpoint(s) {
 				appendHighlightSpan(ret, parent.s, s, highlightError)
 				break
 			}
