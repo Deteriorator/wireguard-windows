@@ -6,7 +6,6 @@
 package syntax
 
 import (
-	"bytes"
 	"unsafe"
 )
 
@@ -67,24 +66,17 @@ func (s stringSpan) at(i int) *byte {
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(s.s)) + uintptr(i)))
 }
 
-func (s stringSpan) toByteSlice() []byte {
-	header := struct {
-		ptr unsafe.Pointer
-		len int
-		cap int
-	}{
-		unsafe.Pointer(s.s),
-		s.len,
-		s.len,
-	}
-	return (*(*[]byte)(unsafe.Pointer(&header)))[:]
-}
-
 func (s stringSpan) isSame(c string) bool {
 	if s.len != len(c) {
 		return false
 	}
-	return bytes.Compare(s.toByteSlice(), ([]byte)(c)) == 0
+	cb := ([]byte)(c)
+	for i := 0; i < s.len; i++ {
+		if *s.at(i) != cb[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func (s stringSpan) isCaselessSame(c string) bool {
@@ -588,7 +580,8 @@ func (hsa *highlightSpanArray) highlightValue(parent stringSpan, s stringSpan, s
 
 func highlightConfig(config string) []highlightSpan {
 	var ret highlightSpanArray
-	s := stringSpan{&append([]byte(config), 0)[0], len(config)}
+	b := append([]byte(config), 0)
+	s := stringSpan{&b[0], len(b) - 1}
 	currentSpan := stringSpan{s.s, 0}
 	currentSection := fieldInvalid
 	currentField := fieldInvalid
