@@ -85,15 +85,15 @@ type stringSpan struct {
 }
 
 func isDecimal(c byte) bool {
-	return (c) >= ('0') && (c) <= ('9')
+	return c >= '0' && c <= '9'
 }
 
 func isHexadecimal(c byte) bool {
-	return isDecimal(c) || ((c)|(32)) >= ('a') && ((c)|(32)) <= ('f')
+	return isDecimal(c) || (c|32) >= 'a' && (c|32) <= 'f'
 }
 
 func isAlphabet(c byte) bool {
-	return ((c)|(32)) >= ('a') && ((c)|(32)) <= ('z')
+	return (c|32) >= 'a' && (c|32) <= 'z'
 }
 
 func isSame(s stringSpan, c *byte) bool {
@@ -101,7 +101,7 @@ func isSame(s stringSpan, c *byte) bool {
 	if len != (s.len) {
 		return false
 	}
-	return cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), (len)) == 0
+	return cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), len) == 0
 }
 
 func isCaselessSame(s stringSpan, c *byte) bool {
@@ -110,17 +110,17 @@ func isCaselessSame(s stringSpan, c *byte) bool {
 		return false
 	}
 	{
-		var i = (0)
+		var i = 0
 		for ; i < len; i++ {
 			var a = *at(c, i)
 			var b = *at(s.s, i)
-			if (a)-('a') < (26) {
-				a &= (95)
+			if a-'a' < 26 {
+				a &= 95
 			}
-			if (b)-('a') < (26) {
-				b &= (95)
+			if b-'a' < 26 {
+				b &= 95
 			}
-			if (a) != (b) {
+			if a != b {
 				return false
 			}
 		}
@@ -129,13 +129,13 @@ func isCaselessSame(s stringSpan, c *byte) bool {
 }
 
 func isValidKey(s stringSpan) bool {
-	if (s.len) != (44) || (*at(s.s, 43)) != ('=') {
+	if (s.len) != 44 || (*at(s.s, 43)) != '=' {
 		return false
 	}
 	{
-		var i = (0)
-		for ; i < (42); i++ {
-			if !isDecimal(*at(s.s, i)) && !isAlphabet(*at(s.s, i)) && (*at(s.s, i)) != ('/') && (*at(s.s, i)) != ('+') {
+		var i = 0
+		for ; i < 42; i++ {
+			if !isDecimal(*at(s.s, i)) && !isAlphabet(*at(s.s, i)) && (*at(s.s, i)) != '/' && (*at(s.s, i)) != '+' {
 				return false
 			}
 		}
@@ -153,32 +153,32 @@ func isValidKey(s stringSpan) bool {
 }
 
 func isValidHostname(s stringSpan) bool {
-	var num_digit = (0)
+	var num_digit = 0
 	var num_entity = (s.len)
-	if (s.len) > (63) || s.len == 0 {
+	if (s.len) > 63 || s.len == 0 {
 		return false
 	}
-	if (*s.s) == ('-') || (*at(s.s, ((s.len) - (1)))) == ('-') {
+	if (*s.s) == '-' || (*at(s.s, ((s.len) - 1))) == '-' {
 		return false
 	}
-	if (*s.s) == ('.') || (*at(s.s, ((s.len) - (1)))) == ('.') {
+	if (*s.s) == '.' || (*at(s.s, ((s.len) - 1))) == '.' {
 		return false
 	}
 	{
-		var i = (0)
+		var i = 0
 		for ; i < (s.len); i++ {
 			if isDecimal(*at(s.s, i)) {
 				num_digit += 1
 				continue
 			}
-			if (*at(s.s, i)) == ('.') {
+			if (*at(s.s, i)) == '.' {
 				num_entity -= 1
 				continue
 			}
-			if !isAlphabet(*at(s.s, i)) && (*at(s.s, i)) != ('-') {
+			if !isAlphabet(*at(s.s, i)) && (*at(s.s, i)) != '-' {
 				return false
 			}
-			if (i) != 0 && (*at(s.s, i)) == ('.') && (*at(s.s, (i - (1)))) == ('.') {
+			if i != 0 && (*at(s.s, i)) == '.' && (*at(s.s, (i - 1))) == '.' {
 				return false
 			}
 		}
@@ -189,32 +189,32 @@ func isValidHostname(s stringSpan) bool {
 func isValidIPv4(s stringSpan) bool {
 	{
 		var j int
-		var i = (0)
-		var pos = (0)
-		for ; i < (4) && pos < (s.len); i++ {
-			var val = (0)
-			for j = (0); j < (3) && pos+j < (s.len) && isDecimal(*at(s.s, pos+j)); j++ {
-				val = ((10)*(val) + int(*at(s.s, pos+j)) - ('0'))
+		var i = 0
+		var pos = 0
+		for ; i < 4 && pos < (s.len); i++ {
+			var val = 0
+			for j = 0; j < 3 && pos+j < (s.len) && isDecimal(*at(s.s, pos+j)); j++ {
+				val = (10*val + int(*at(s.s, pos+j)) - '0')
 			}
-			if j == (0) || j > (1) && (*at(s.s, pos)) == ('0') || val > (255) {
+			if j == 0 || j > 1 && (*at(s.s, pos)) == '0' || val > 255 {
 				return false
 			}
-			if pos+j == (s.len) && i == (3) {
+			if pos+j == (s.len) && i == 3 {
 				return true
 			}
-			if (*at(s.s, pos+j)) != ('.') {
+			if (*at(s.s, pos+j)) != '.' {
 				return false
 			}
-			pos += j + (1)
+			pos += j + 1
 		}
 	}
 	return false
 }
 
 func isValidIPv6(s stringSpan) bool {
-	var pos = (0)
+	var pos = 0
 	var seenColon = false
-	if (s.len) < (2) {
+	if (s.len) < 2 {
 		return false
 	}
 	if *at(s.s, pos) == ':' {
@@ -223,46 +223,46 @@ func isValidIPv6(s stringSpan) bool {
 			return false
 		}
 	}
-	if (*at(s.s, ((s.len) - (1)))) == (':') && (*at(s.s, ((s.len) - (2)))) != (':') {
+	if (*at(s.s, ((s.len) - 1))) == ':' && (*at(s.s, ((s.len) - 2))) != ':' {
 		return false
 	}
 	{
 		var j int
-		var i = (0)
+		var i = 0
 		for ; pos < (s.len); i++ {
-			if (*at(s.s, pos)) == (':') && !seenColon {
+			if (*at(s.s, pos)) == ':' && !seenColon {
 				seenColon = true
 				pos++
 				if pos == s.len {
 					break
 				}
-				if i == (7) {
+				if i == 7 {
 					return false
 				}
 				continue
 			}
-			for j = (0); ; j++ {
-				if j < (4) && pos+j < (s.len) && isHexadecimal(*at(s.s, pos+j)) {
+			for j = 0; ; j++ {
+				if j < 4 && pos+j < (s.len) && isHexadecimal(*at(s.s, pos+j)) {
 					continue
 				}
 				break
 			}
-			if j == (0) {
+			if j == 0 {
 				return false
 			}
-			if pos+j == (s.len) && (seenColon || i == (7)) {
+			if pos+j == (s.len) && (seenColon || i == 7) {
 				break
 			}
-			if i == (7) {
+			if i == 7 {
 				return false
 			}
-			if (*at(s.s, pos+j)) != (':') {
-				if (*at(s.s, pos+j)) != ('.') || i < (6) && !seenColon {
+			if (*at(s.s, pos+j)) != ':' {
+				if (*at(s.s, pos+j)) != '.' || i < 6 && !seenColon {
 					return false
 				}
 				return isValidIPv4(stringSpan{at(s.s, pos), (s.len) - pos})
 			}
-			pos += j + (1)
+			pos += j + 1
 		}
 	}
 	return true
@@ -271,17 +271,17 @@ func isValidIPv6(s stringSpan) bool {
 /* Bound this around 32 bits, so that we don't have to write overflow logic. */
 func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
 	var val = uint64(0)
-	if (s.len) > (10) || s.len == 0 {
+	if (s.len) > 10 || s.len == 0 {
 		return false
 	}
-	if support_hex && (s.len) > (2) && (*s.s) == ('0') && (*at(s.s, 1)) == ('x') {
+	if support_hex && (s.len) > 2 && (*s.s) == '0' && (*at(s.s, 1)) == 'x' {
 		{
-			var i = (2)
+			var i = 2
 			for ; i < (s.len); i++ {
-				if (*at(s.s, i))-('0') < (10) {
-					val = ((16)*(val) + uint64((*at(s.s, i))-('0')))
-				} else if (*at(s.s, i))|(32)-('a') < (6) {
-					val = ((16)*(val) + uint64((*at(s.s, i))|(32)) - ('a') + (10))
+				if (*at(s.s, i))-'0' < 10 {
+					val = (16*val + uint64((*at(s.s, i))-'0'))
+				} else if (*at(s.s, i))|32-'a' < 6 {
+					val = (16*val + uint64((*at(s.s, i))|32) - 'a' + 10)
 				} else {
 					return false
 				}
@@ -289,12 +289,12 @@ func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
 		}
 	} else {
 		{
-			var i = (0)
+			var i = 0
 			for ; i < (s.len); i++ {
 				if !isDecimal(*at(s.s, i)) {
 					return false
 				}
-				val = ((10)*(val) + uint64(*at(s.s, i)) - ('0'))
+				val = (10*val + uint64(*at(s.s, i)) - '0')
 			}
 		}
 	}
@@ -302,25 +302,25 @@ func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
 }
 
 func isValidPort(s stringSpan) bool {
-	return isValidUint(s, false, (0), (65535))
+	return isValidUint(s, false, 0, 65535)
 }
 
 func isValidMTU(s stringSpan) bool {
-	return isValidUint(s, false, (576), (65535))
+	return isValidUint(s, false, 576, 65535)
 }
 
 func isValidPersistentKeepAlive(s stringSpan) bool {
 	if isSame(s, &[]byte("off\x00")[0]) {
 		return true
 	}
-	return isValidUint(s, false, (0), (65535))
+	return isValidUint(s, false, 0, 65535)
 }
 
 func isValidFwMark(s stringSpan) bool {
 	if isSame(s, &[]byte("off\x00")[0]) {
 		return true
 	}
-	return isValidUint(s, true, (0), (4294967295))
+	return isValidUint(s, true, 0, 4294967295)
 }
 
 /* This pretty much invalidates the other checks, but rt_names.c's
@@ -332,10 +332,10 @@ func isValidTable(s stringSpan) bool {
 	if isSame(s, &[]byte("off\x00")[0]) {
 		return true
 	}
-	if (s.len) < (512) {
+	if (s.len) < 512 {
 		return true
 	}
-	return isValidUint(s, false, (0), (4294967295))
+	return isValidUint(s, false, 0, 4294967295)
 }
 
 func isValidSaveConfig(s stringSpan) bool {
@@ -349,13 +349,13 @@ func isValidPrePostUpDown(s stringSpan) bool {
 }
 
 func isValidScope(s stringSpan) bool {
-	if (s.len) > (64) || s.len == 0 {
+	if (s.len) > 64 || s.len == 0 {
 		return false
 	}
 	{
-		var i = (0)
+		var i = 0
 		for ; i < (s.len); i++ {
-			if isAlphabet(*at(s.s, i)) && !isDecimal(*at(s.s, i)) && (*at(s.s, i)) != ('_') && (*at(s.s, i)) != ('=') && (*at(s.s, i)) != ('+') && (*at(s.s, i)) != ('.') && (*at(s.s, i)) != ('-') {
+			if isAlphabet(*at(s.s, i)) && !isDecimal(*at(s.s, i)) && (*at(s.s, i)) != '_' && (*at(s.s, i)) != '=' && (*at(s.s, i)) != '+' && (*at(s.s, i)) != '.' && (*at(s.s, i)) != '-' {
 				return false
 			}
 		}
@@ -367,13 +367,13 @@ func isValidEndpoint(s stringSpan) bool {
 	if s.len == 0 {
 		return false
 	}
-	if (*s.s) == ('[') {
+	if (*s.s) == '[' {
 		var seenScope = false
-		var hostspan = stringSpan{at(s.s, 1), (0)}
+		var hostspan = stringSpan{at(s.s, 1), 0}
 		{
-			var i = (1)
+			var i = 1
 			for ; i < (s.len); i++ {
-				if (*at(s.s, i)) == ('%') {
+				if (*at(s.s, i)) == '%' {
 					if seenScope {
 						return false
 					}
@@ -381,8 +381,8 @@ func isValidEndpoint(s stringSpan) bool {
 					if !isValidIPv6(hostspan) {
 						return false
 					}
-					hostspan = stringSpan{at(s.s, i+1), (0)}
-				} else if (*at(s.s, i)) == (']') {
+					hostspan = stringSpan{at(s.s, i+1), 0}
+				} else if (*at(s.s, i)) == ']' {
 					if seenScope {
 						if !isValidScope(hostspan) {
 							return false
@@ -390,23 +390,23 @@ func isValidEndpoint(s stringSpan) bool {
 					} else if !isValidIPv6(hostspan) {
 						return false
 					}
-					if i == (s.len)-(1) || (*at(s.s, (i + (1)))) != (':') {
+					if i == (s.len)-1 || (*at(s.s, (i + 1))) != ':' {
 						return false
 					}
-					return isValidPort(stringSpan{at(s.s, i+2), (s.len) - i - (2)})
+					return isValidPort(stringSpan{at(s.s, i+2), (s.len) - i - 2})
 				} else {
-					hostspan.len += (1)
+					hostspan.len += 1
 				}
 			}
 		}
 		return false
 	}
 	{
-		var i = (0)
+		var i = 0
 		for ; i < (s.len); i++ {
-			if (*at(s.s, i)) == (':') {
-				var host = stringSpan{s.s, (i)}
-				var port = stringSpan{at(s.s, i+1), (s.len) - i - (1)}
+			if (*at(s.s, i)) == ':' {
+				var host = stringSpan{s.s, i}
+				var port = stringSpan{at(s.s, i+1), (s.len) - i - 1}
 				return isValidPort(port) && (isValidIPv4(host) || isValidHostname(host))
 			}
 		}
@@ -416,28 +416,28 @@ func isValidEndpoint(s stringSpan) bool {
 
 func isValidNetwork(s stringSpan) bool {
 	{
-		var i = (0)
+		var i = 0
 		for ; i < (s.len); i++ {
-			if (*at(s.s, i)) == ('/') {
-				var ip = stringSpan{s.s, (i)}
-				var cidr = stringSpan{at(s.s, i+1), (s.len) - i - (1)}
+			if (*at(s.s, i)) == '/' {
+				var ip = stringSpan{s.s, i}
+				var cidr = stringSpan{at(s.s, i+1), (s.len) - i - 1}
 				var cidrval = uint16(0)
-				if (cidr.len) > (3) || cidr.len == 0 {
+				if (cidr.len) > 3 || cidr.len == 0 {
 					return false
 				}
 				{
-					var j = (0)
+					var j = 0
 					for ; j < (cidr.len); j++ {
 						if !isDecimal(*at(cidr.s, j)) {
 							return false
 						}
-						cidrval = ((10)*(cidrval) + uint16(*at(cidr.s, j)) - ('0'))
+						cidrval = (10*cidrval + uint16(*at(cidr.s, j)) - '0')
 					}
 				}
 				if isValidIPv4(ip) {
-					return (cidrval) <= (32)
+					return cidrval <= 32
 				} else if isValidIPv6(ip) {
-					return (cidrval) <= (128)
+					return cidrval <= 128
 				}
 				return false
 			}
@@ -472,10 +472,10 @@ const (
 )
 
 func sectionForField(t field) field {
-	if (t) > (InterfaceSection) && (t) < (PeerSection) {
+	if t > InterfaceSection && t < PeerSection {
 		return InterfaceSection
 	}
-	if (t) > (PeerSection) && (t) < (Invalid) {
+	if t > PeerSection && t < Invalid {
 		return PeerSection
 	}
 	return Invalid
@@ -542,7 +542,7 @@ func (a *highlightSpanArray) append(o *byte, s stringSpan, t highlight) {
 
 func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
 	switch section {
-	case (DNS):
+	case DNS:
 		{
 			if isValidIPv4(s) || isValidIPv6(s) {
 				ret.append(parent.s, s, highlightIP)
@@ -552,24 +552,24 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 				ret.append(parent.s, s, highlightError)
 			}
 		}
-	case (Address), (AllowedIPs):
+	case Address, AllowedIPs:
 		{
 			var slash int
 			if !isValidNetwork(s) {
 				ret.append(parent.s, s, highlightError)
 				break
 			}
-			for slash = (0); slash < (s.len); slash++ {
-				if (*at(s.s, slash)) == ('/') {
+			for slash = 0; slash < (s.len); slash++ {
+				if (*at(s.s, slash)) == '/' {
 					break
 				}
 			}
 			if slash == (s.len) {
 				ret.append(parent.s, s, highlightIP)
 			} else {
-				ret.append(parent.s, stringSpan{s.s, (slash)}, highlightIP)
-				ret.append(parent.s, stringSpan{at(s.s, slash), (1)}, highlightDelimiter)
-				ret.append(parent.s, stringSpan{at(s.s, slash+1), (s.len) - slash - (1)}, highlightCidr)
+				ret.append(parent.s, stringSpan{s.s, slash}, highlightIP)
+				ret.append(parent.s, stringSpan{at(s.s, slash), 1}, highlightDelimiter)
+				ret.append(parent.s, stringSpan{at(s.s, slash+1), (s.len) - slash - 1}, highlightCidr)
 			}
 		}
 	default:
@@ -580,22 +580,22 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 }
 
 func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
-	var currentSpan = stringSpan{s.s, (0)}
-	var lenAtLastSpace = (0)
+	var currentSpan = stringSpan{s.s, 0}
+	var lenAtLastSpace = 0
 	{
-		var i = (0)
+		var i = 0
 		for ; i < (s.len); i++ {
-			if (*at(s.s, i)) == (',') {
+			if (*at(s.s, i)) == ',' {
 				currentSpan.len = lenAtLastSpace
-				highlightMultivalueValue(ret, stringSpan(parent), stringSpan(currentSpan), section)
-				ret.append(parent.s, stringSpan{at(s.s, i), (1)}, highlightDelimiter)
-				lenAtLastSpace = (0)
-				currentSpan = stringSpan{at(s.s, i+1), (0)}
-			} else if (*at(s.s, i)) == (' ') || (*at(s.s, i)) == ('\t') {
+				highlightMultivalueValue(ret, parent, currentSpan, section)
+				ret.append(parent.s, stringSpan{at(s.s, i), 1}, highlightDelimiter)
+				lenAtLastSpace = 0
+				currentSpan = stringSpan{at(s.s, i+1), 0}
+			} else if (*at(s.s, i)) == ' ' || (*at(s.s, i)) == '\t' {
 				if (uintptr(unsafe.Pointer(at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = at(currentSpan.s, 1)
 				} else {
-					currentSpan.len += (1)
+					currentSpan.len += 1
 				}
 			} else {
 				currentSpan.len++
@@ -605,7 +605,7 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 	}
 	currentSpan.len = lenAtLastSpace
 	if (currentSpan.len) != 0 {
-		highlightMultivalueValue(ret, stringSpan(parent), stringSpan(currentSpan), section)
+		highlightMultivalueValue(ret, parent, currentSpan, section)
 	} else if (*ret)[len(*ret)-1].t == highlightDelimiter {
 		(*ret)[len(*ret)-1].t = highlightError
 	}
@@ -641,15 +641,15 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 		for colon = s.len; colon > 0; {
 			colon--
-			if (*at(s.s, colon)) == (':') {
+			if (*at(s.s, colon)) == ':' {
 				break
 			}
 		}
-		ret.append(parent.s, stringSpan{s.s, (colon)}, highlightHost)
-		ret.append(parent.s, stringSpan{at(s.s, colon), (1)}, highlightDelimiter)
-		ret.append(parent.s, stringSpan{at(s.s, colon+1), (s.len) - colon - (1)}, highlightPort)
+		ret.append(parent.s, stringSpan{s.s, colon}, highlightHost)
+		ret.append(parent.s, stringSpan{at(s.s, colon), 1}, highlightDelimiter)
+		ret.append(parent.s, stringSpan{at(s.s, colon+1), (s.len) - colon - 1}, highlightPort)
 	case Address, DNS, AllowedIPs:
-		highlightMultivalue(ret, stringSpan(parent), stringSpan(s), section)
+		highlightMultivalue(ret, parent, s, section)
 	default:
 		ret.append(parent.s, s, highlightError)
 	}
@@ -667,66 +667,66 @@ const (
 
 func highlightConfigInt(config *byte) []highlightSpan {
 	var ret highlightSpanArray
-	var s = stringSpan{config, (cStrlen(config))}
-	var currentSpan = stringSpan{s.s, (0)}
+	var s = stringSpan{config, cStrlen(config)}
+	var currentSpan = stringSpan{s.s, 0}
 	var currentSection field = Invalid
 	var currentField field = Invalid
 	var state = OnNone
-	var lenAtLastSpace = (0)
-	var equalsLocation = (0)
+	var lenAtLastSpace = 0
+	var equalsLocation = 0
 	{
-		var i = (0)
+		var i = 0
 		for ; i <= (s.len); i++ {
-			if i == (s.len) || (*at(s.s, i)) == ('\n') || (state) != (OnComment) && (*at(s.s, i)) == ('#') {
-				if (state) == (OnKey) {
+			if i == (s.len) || (*at(s.s, i)) == '\n' || state != OnComment && (*at(s.s, i)) == '#' {
+				if state == OnKey {
 					currentSpan.len = lenAtLastSpace
 					ret.append(s.s, currentSpan, highlightError)
-				} else if (state) == (OnValue) {
+				} else if state == OnValue {
 					if (currentSpan.len) != 0 {
-						ret.append(s.s, stringSpan{at(s.s, equalsLocation), (1)}, highlightDelimiter)
+						ret.append(s.s, stringSpan{at(s.s, equalsLocation), 1}, highlightDelimiter)
 						currentSpan.len = lenAtLastSpace
-						highlightValue(&ret, stringSpan(s), stringSpan(currentSpan), currentField)
+						highlightValue(&ret, s, currentSpan, currentField)
 					} else {
-						ret.append(s.s, stringSpan{at(s.s, equalsLocation), (1)}, highlightError)
+						ret.append(s.s, stringSpan{at(s.s, equalsLocation), 1}, highlightError)
 					}
-				} else if (state) == (OnSection) {
+				} else if state == OnSection {
 					currentSpan.len = lenAtLastSpace
 					currentSection = getSectionType(currentSpan)
 					ret.append(s.s, currentSpan, validateHighlight(currentSection != Invalid, highlightSection))
-				} else if (state) == (OnComment) {
+				} else if state == OnComment {
 					ret.append(s.s, currentSpan, highlightComment)
 				}
 				if i == (s.len) {
 					break
 				}
-				lenAtLastSpace = (0)
+				lenAtLastSpace = 0
 				currentField = Invalid
-				if (*at(s.s, i)) == ('#') {
-					currentSpan = stringSpan{at(s.s, i), (1)}
+				if (*at(s.s, i)) == '#' {
+					currentSpan = stringSpan{at(s.s, i), 1}
 					state = OnComment
 				} else {
-					currentSpan = stringSpan{at(s.s, i+1), (0)}
+					currentSpan = stringSpan{at(s.s, i+1), 0}
 					state = OnNone
 				}
-			} else if (state) == (OnComment) {
-				currentSpan.len += (1)
-			} else if (*at(s.s, i)) == (' ') || (*at(s.s, i)) == ('\t') {
+			} else if state == OnComment {
+				currentSpan.len += 1
+			} else if (*at(s.s, i)) == ' ' || (*at(s.s, i)) == '\t' {
 				if (uintptr(unsafe.Pointer(at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = at(currentSpan.s, 1)
 				} else {
-					currentSpan.len += (1)
+					currentSpan.len += 1
 				}
-			} else if (*at(s.s, i)) == ('=') && (state) == (OnKey) {
+			} else if (*at(s.s, i)) == '=' && state == OnKey {
 				currentSpan.len = lenAtLastSpace
 				currentField = getField(currentSpan)
 				var section = sectionForField(currentField)
-				if (section) == (Invalid) || (currentField) == (Invalid) || (section) != (currentSection) {
+				if section == Invalid || currentField == Invalid || section != currentSection {
 					ret.append(s.s, currentSpan, highlightError)
 				} else {
 					ret.append(s.s, currentSpan, highlightField)
 				}
 				equalsLocation = i
-				currentSpan = stringSpan{at(s.s, i+1), (0)}
+				currentSpan = stringSpan{at(s.s, i+1), 0}
 				state = OnValue
 			} else {
 				if state == OnNone {
