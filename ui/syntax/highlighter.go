@@ -153,8 +153,8 @@ func isValidKey(s stringSpan) bool {
 }
 
 func isValidHostname(s stringSpan) bool {
-	var num_digit = 0
-	var num_entity = (s.len)
+	var numDigit = 0
+	var numEntity = (s.len)
 	if (s.len) > 63 || s.len == 0 {
 		return false
 	}
@@ -168,11 +168,11 @@ func isValidHostname(s stringSpan) bool {
 		var i = 0
 		for ; i < (s.len); i++ {
 			if isDecimal(*at(s.s, i)) {
-				num_digit += 1
+				numDigit++
 				continue
 			}
 			if (*at(s.s, i)) == '.' {
-				num_entity -= 1
+				numEntity--
 				continue
 			}
 			if !isAlphabet(*at(s.s, i)) && (*at(s.s, i)) != '-' {
@@ -183,7 +183,7 @@ func isValidHostname(s stringSpan) bool {
 			}
 		}
 	}
-	return num_digit != num_entity
+	return numDigit != numEntity
 }
 
 func isValidIPv4(s stringSpan) bool {
@@ -269,12 +269,12 @@ func isValidIPv6(s stringSpan) bool {
 }
 
 /* Bound this around 32 bits, so that we don't have to write overflow logic. */
-func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
+func isValidUint(s stringSpan, supportHex bool, min uint64, max uint64) bool {
 	var val = uint64(0)
 	if (s.len) > 10 || s.len == 0 {
 		return false
 	}
-	if support_hex && (s.len) > 2 && (*s.s) == '0' && (*at(s.s, 1)) == 'x' {
+	if supportHex && (s.len) > 2 && (*s.s) == '0' && (*at(s.s, 1)) == 'x' {
 		{
 			var i = 2
 			for ; i < (s.len); i++ {
@@ -395,7 +395,7 @@ func isValidEndpoint(s stringSpan) bool {
 					}
 					return isValidPort(stringSpan{at(s.s, i+2), (s.len) - i - 2})
 				} else {
-					hostspan.len += 1
+					hostspan.len++
 				}
 			}
 		}
@@ -595,7 +595,7 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 				if (uintptr(unsafe.Pointer(at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = at(currentSpan.s, 1)
 				} else {
-					currentSpan.len += 1
+					currentSpan.len++
 				}
 			} else {
 				currentSpan.len++
@@ -655,33 +655,31 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	}
 }
 
-type parserState int32
-
-const (
-	OnNone    parserState = 0
-	OnKey                 = 1
-	OnValue               = 2
-	OnComment             = 3
-	OnSection             = 4
-)
-
 func highlightConfigInt(config *byte) []highlightSpan {
 	var ret highlightSpanArray
 	var s = stringSpan{config, cStrlen(config)}
 	var currentSpan = stringSpan{s.s, 0}
 	var currentSection field = Invalid
 	var currentField field = Invalid
-	var state = OnNone
+	type parserState int32
+	const (
+		onNone parserState = iota
+		onKey
+		onValue
+		onComment
+		onSection
+	)
+	var state = onNone
 	var lenAtLastSpace = 0
 	var equalsLocation = 0
 	{
 		var i = 0
 		for ; i <= (s.len); i++ {
-			if i == (s.len) || (*at(s.s, i)) == '\n' || state != OnComment && (*at(s.s, i)) == '#' {
-				if state == OnKey {
+			if i == (s.len) || (*at(s.s, i)) == '\n' || state != onComment && (*at(s.s, i)) == '#' {
+				if state == onKey {
 					currentSpan.len = lenAtLastSpace
 					ret.append(s.s, currentSpan, highlightError)
-				} else if state == OnValue {
+				} else if state == onValue {
 					if (currentSpan.len) != 0 {
 						ret.append(s.s, stringSpan{at(s.s, equalsLocation), 1}, highlightDelimiter)
 						currentSpan.len = lenAtLastSpace
@@ -689,11 +687,11 @@ func highlightConfigInt(config *byte) []highlightSpan {
 					} else {
 						ret.append(s.s, stringSpan{at(s.s, equalsLocation), 1}, highlightError)
 					}
-				} else if state == OnSection {
+				} else if state == onSection {
 					currentSpan.len = lenAtLastSpace
 					currentSection = getSectionType(currentSpan)
 					ret.append(s.s, currentSpan, validateHighlight(currentSection != Invalid, highlightSection))
-				} else if state == OnComment {
+				} else if state == onComment {
 					ret.append(s.s, currentSpan, highlightComment)
 				}
 				if i == (s.len) {
@@ -703,20 +701,20 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				currentField = Invalid
 				if (*at(s.s, i)) == '#' {
 					currentSpan = stringSpan{at(s.s, i), 1}
-					state = OnComment
+					state = onComment
 				} else {
 					currentSpan = stringSpan{at(s.s, i+1), 0}
-					state = OnNone
+					state = onNone
 				}
-			} else if state == OnComment {
-				currentSpan.len += 1
+			} else if state == onComment {
+				currentSpan.len++
 			} else if (*at(s.s, i)) == ' ' || (*at(s.s, i)) == '\t' {
 				if (uintptr(unsafe.Pointer(at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = at(currentSpan.s, 1)
 				} else {
-					currentSpan.len += 1
+					currentSpan.len++
 				}
-			} else if (*at(s.s, i)) == '=' && state == OnKey {
+			} else if (*at(s.s, i)) == '=' && state == onKey {
 				currentSpan.len = lenAtLastSpace
 				currentField = getField(currentSpan)
 				var section = sectionForField(currentField)
@@ -727,13 +725,13 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				}
 				equalsLocation = i
 				currentSpan = stringSpan{at(s.s, i+1), 0}
-				state = OnValue
+				state = onValue
 			} else {
-				if state == OnNone {
+				if state == onNone {
 					if *at(s.s, i) == '[' {
-						state = OnSection
+						state = onSection
 					} else {
-						state = OnKey
+						state = onKey
 					}
 				}
 				currentSpan.len++
