@@ -729,14 +729,12 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				currentSpan = stringSpan{at(s.s, i+1), (0)}
 				state = OnValue
 			} else {
-				if (state) == (OnNone) {
-					state = parserState(func() int32 {
-						if (*at(s.s, i)) == ('[') {
-							return (OnSection)
-						} else {
-							return (OnKey)
-						}
-					}())
+				if state == OnNone {
+					if *at(s.s, i) == '[' {
+						state = OnSection
+					} else {
+						state = OnKey
+					}
 				}
 				currentSpan.len++
 				lenAtLastSpace = currentSpan.len
