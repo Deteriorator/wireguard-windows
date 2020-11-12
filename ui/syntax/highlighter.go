@@ -10,33 +10,6 @@ import (
 	"unsafe"
 )
 
-func toByteSlice(a *byte, length int) []byte {
-	header := struct {
-		ptr unsafe.Pointer
-		len int
-		cap int
-	}{
-		unsafe.Pointer(a),
-		length,
-		length,
-	}
-	return (*(*[]byte)(unsafe.Pointer(&header)))[:]
-}
-
-func cStrlen(a *byte) int {
-	for i := 0; ; i++ {
-		if *(*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(a)) + uintptr(i))) == 0 {
-			return i
-		}
-	}
-}
-
-func cMemcmp(src1, src2 unsafe.Pointer, n int) int {
-	b1 := toByteSlice((*byte)(src1), n)
-	b2 := toByteSlice((*byte)(src2), n)
-	return (bytes.Compare(b1, b2))
-}
-
 type highlight int
 
 const (
@@ -94,20 +67,34 @@ func (s stringSpan) at(i int) *byte {
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(s.s)) + uintptr(i)))
 }
 
-func (s stringSpan) isSame(c *byte) bool {
-	if cStrlen(c) != s.len {
-		return false
+func (s stringSpan) toByteSlice() []byte {
+	header := struct {
+		ptr unsafe.Pointer
+		len int
+		cap int
+	}{
+		unsafe.Pointer(s.s),
+		s.len,
+		s.len,
 	}
-	return cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), s.len) == 0
+	return (*(*[]byte)(unsafe.Pointer(&header)))[:]
 }
 
-func (s stringSpan) isCaselessSame(c *byte) bool {
-	if cStrlen(c) != s.len {
+func (s stringSpan) isSame(c string) bool {
+	if s.len != len(c) {
 		return false
 	}
+	return bytes.Compare(s.toByteSlice(), ([]byte)(c)) == 0
+}
+
+func (s stringSpan) isCaselessSame(c string) bool {
+	if s.len != len(c) {
+		return false
+	}
+	cb := ([]byte)(c)
 	for i := 0; i < s.len; i++ {
-		a := *at(c, i)
-		b := *s.at(i)
+		a := *s.at(i)
+		b := cb[i]
 		if a-'a' < 26 {
 			a &= 95
 		}
@@ -280,14 +267,14 @@ func (s stringSpan) isValidMTU() bool {
 }
 
 func (s stringSpan) isValidPersistentKeepAlive() bool {
-	if s.isSame(&[]byte("off\x00")[0]) {
+	if s.isSame("off") {
 		return true
 	}
 	return s.isValidUint(false, 0, 65535)
 }
 
 func (s stringSpan) isValidFwMark() bool {
-	if s.isSame(&[]byte("off\x00")[0]) {
+	if s.isSame("off") {
 		return true
 	}
 	return s.isValidUint(true, 0, 4294967295)
@@ -295,10 +282,10 @@ func (s stringSpan) isValidFwMark() bool {
 
 // This pretty much invalidates the other checks, but rt_names.c's fread_id_name does no validation aside from this.
 func (s stringSpan) isValidTable() bool {
-	if s.isSame(&[]byte("auto\x00")[0]) {
+	if s.isSame("auto") {
 		return true
 	}
-	if s.isSame(&[]byte("off\x00")[0]) {
+	if s.isSame("off") {
 		return true
 	}
 	if s.len < 512 {
@@ -308,7 +295,7 @@ func (s stringSpan) isValidTable() bool {
 }
 
 func (s stringSpan) isValidSaveConfig() bool {
-	return s.isSame(&[]byte("true\x00")[0]) || s.isSame(&[]byte("false\x00")[0])
+	return s.isSame("true") || s.isSame("false")
 }
 
 // It's probably not worthwhile to try to validate a bash expression. So instead we just demand non-zero length.
@@ -436,39 +423,39 @@ func sectionForField(t field) field {
 
 func (s stringSpan) field() field {
 	switch {
-	case s.isCaselessSame(&[]byte("PrivateKey\x00")[0]):
+	case s.isCaselessSame("PrivateKey"):
 		return PrivateKey
-	case s.isCaselessSame(&[]byte("ListenPort\x00")[0]):
+	case s.isCaselessSame("ListenPort"):
 		return ListenPort
-	case s.isCaselessSame(&[]byte("Address\x00")[0]):
+	case s.isCaselessSame("Address"):
 		return Address
-	case s.isCaselessSame(&[]byte("DNS\x00")[0]):
+	case s.isCaselessSame("DNS"):
 		return DNS
-	case s.isCaselessSame(&[]byte("MTU\x00")[0]):
+	case s.isCaselessSame("MTU"):
 		return MTU
-	case s.isCaselessSame(&[]byte("PublicKey\x00")[0]):
+	case s.isCaselessSame("PublicKey"):
 		return PublicKey
-	case s.isCaselessSame(&[]byte("PresharedKey\x00")[0]):
+	case s.isCaselessSame("PresharedKey"):
 		return PresharedKey
-	case s.isCaselessSame(&[]byte("AllowedIPs\x00")[0]):
+	case s.isCaselessSame("AllowedIPs"):
 		return AllowedIPs
-	case s.isCaselessSame(&[]byte("Endpoint\x00")[0]):
+	case s.isCaselessSame("Endpoint"):
 		return Endpoint
-	case s.isCaselessSame(&[]byte("PersistentKeepalive\x00")[0]):
+	case s.isCaselessSame("PersistentKeepalive"):
 		return PersistentKeepalive
-	case s.isCaselessSame(&[]byte("FwMark\x00")[0]):
+	case s.isCaselessSame("FwMark"):
 		return FwMark
-	case s.isCaselessSame(&[]byte("Table\x00")[0]):
+	case s.isCaselessSame("Table"):
 		return Table
-	case s.isCaselessSame(&[]byte("PreUp\x00")[0]):
+	case s.isCaselessSame("PreUp"):
 		return PreUp
-	case s.isCaselessSame(&[]byte("PostUp\x00")[0]):
+	case s.isCaselessSame("PostUp"):
 		return PostUp
-	case s.isCaselessSame(&[]byte("PreDown\x00")[0]):
+	case s.isCaselessSame("PreDown"):
 		return PreDown
-	case s.isCaselessSame(&[]byte("PostDown\x00")[0]):
+	case s.isCaselessSame("PostDown"):
 		return PostDown
-	case s.isCaselessSame(&[]byte("SaveConfig\x00")[0]):
+	case s.isCaselessSame("SaveConfig"):
 		return SaveConfig
 	}
 	return Invalid
@@ -476,9 +463,9 @@ func (s stringSpan) field() field {
 
 func (s stringSpan) sectionType() field {
 	switch {
-	case s.isCaselessSame(&[]byte("[Peer]\x00")[0]):
+	case s.isCaselessSame("[Peer]"):
 		return PeerSection
-	case s.isCaselessSame(&[]byte("[Interface]\x00")[0]):
+	case s.isCaselessSame("[Interface]"):
 		return InterfaceSection
 	}
 	return Invalid
@@ -599,9 +586,9 @@ func (hsa *highlightSpanArray) highlightValue(parent stringSpan, s stringSpan, s
 	}
 }
 
-func highlightConfigInt(config *byte) []highlightSpan {
+func highlightConfig(config string) []highlightSpan {
 	var ret highlightSpanArray
-	s := stringSpan{config, cStrlen(config)}
+	s := stringSpan{&append([]byte(config), 0)[0], len(config)}
 	currentSpan := stringSpan{s.s, 0}
 	currentSection := Invalid
 	currentField := Invalid
@@ -680,8 +667,4 @@ func highlightConfigInt(config *byte) []highlightSpan {
 		}
 	}
 	return ([]highlightSpan)(ret)
-}
-
-func highlightConfig(config string) []highlightSpan {
-	return highlightConfigInt(&append([]byte(config), 0)[0])
 }
