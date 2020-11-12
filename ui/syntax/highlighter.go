@@ -12,38 +12,38 @@ import (
 	"unsafe"
 )
 
-func toByteSlice(a *byte, length int32) []byte {
+func toByteSlice(a *byte, length int) []byte {
 	header := struct {
 		ptr unsafe.Pointer
 		len int
 		cap int
 	}{
 		unsafe.Pointer(a),
-		int(length),
-		int(length),
+		length,
+		length,
 	}
 	return (*(*[]byte)(unsafe.Pointer(&header)))[:]
 }
 
-func cStrlen(a *byte) int32 {
+func cStrlen(a *byte) int {
 	for i := 0; ; i++ {
 		if *(*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(a)) + uintptr(i))) == 0 {
-			return int32(i)
+			return i
 		}
 	}
 }
 
-func cMemcmp(src1, src2 unsafe.Pointer, n int32) int32 {
+func cMemcmp(src1, src2 unsafe.Pointer, n int) int {
 	b1 := toByteSlice((*byte)(src1), n)
 	b2 := toByteSlice((*byte)(src2), n)
-	return int32(bytes.Compare(b1, b2))
+	return (bytes.Compare(b1, b2))
 }
 
-func at(a *byte, i uint32) *byte {
+func at(a *byte, i int) *byte {
 	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(a)) + uintptr(i)*unsafe.Sizeof(*a)))
 }
 
-type highlight int32
+type highlight int
 
 const (
 	highlightSection      highlight = 0
@@ -68,52 +68,52 @@ const (
 
 type highlightSpan struct {
 	t   highlight
-	s   uint32
-	len uint32
+	s   int
+	len int
 }
 
 type stringSpan struct {
 	s   *byte
-	len uint32
+	len int
 }
 
 func isDecimal(c byte) bool {
-	return int32(c) >= int32('0') && int32(c) <= int32('9')
+	return (c) >= ('0') && (c) <= ('9')
 }
 
 func isHexadecimal(c byte) bool {
-	return isDecimal(c) || (int32(c)|int32(32)) >= int32('a') && (int32(c)|int32(32)) <= int32('f')
+	return isDecimal(c) || ((c)|(32)) >= ('a') && ((c)|(32)) <= ('f')
 }
 
 func isAlphabet(c byte) bool {
-	return (int32(c)|int32(32)) >= int32('a') && (int32(c)|int32(32)) <= int32('z')
+	return ((c)|(32)) >= ('a') && ((c)|(32)) <= ('z')
 }
 
 func isSame(s stringSpan, c *byte) bool {
-	var len = uint32(uint32(cStrlen(c)))
-	if len != uint32(s.len) {
+	var len = (cStrlen(c))
+	if len != (s.len) {
 		return false
 	}
-	return cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), int32(uint32(uint32(len)))) == 0
+	return cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), (len)) == 0
 }
 
 func isCaselessSame(s stringSpan, c *byte) bool {
-	var len = uint32(uint32(cStrlen(c)))
-	if len != uint32(s.len) {
+	var len = (cStrlen(c))
+	if len != (s.len) {
 		return false
 	}
 	{
-		var i = uint32(int32(0))
+		var i = (0)
 		for ; i < len; i++ {
-			var a = *((*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(c)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*c))))
+			var a = *((*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(c)) + (uintptr)((i))*unsafe.Sizeof(*c))))
 			var b = *at(s.s, i)
-			if uint32(a)-uint32('a') < uint32(int32(26)) {
-				a &= byte(byte(int32(95)))
+			if (a)-('a') < (26) {
+				a &= (95)
 			}
-			if uint32(b)-uint32('a') < uint32(int32(26)) {
-				b &= byte(byte(int32(95)))
+			if (b)-('a') < (26) {
+				b &= (95)
 			}
-			if int32(a) != int32(b) {
+			if (a) != (b) {
 				return false
 			}
 		}
@@ -122,18 +122,18 @@ func isCaselessSame(s stringSpan, c *byte) bool {
 }
 
 func isValidKey(s stringSpan) bool {
-	if uint32(s.len) != uint32(uint32(int32(44))) || int32(*at(s.s, 43)) != int32('=') {
+	if (s.len) != (44) || (*at(s.s, 43)) != ('=') {
 		return false
 	}
 	{
-		var i = uint32(int32(0))
-		for ; i < uint32(uint32(int32(42))); i++ {
-			if !isDecimal(*at(s.s, i)) && !isAlphabet(*at(s.s, i)) && int32(*at(s.s, i)) != int32('/') && int32(*at(s.s, i)) != int32('+') {
+		var i = (0)
+		for ; i < (42); i++ {
+			if !isDecimal(*at(s.s, i)) && !isAlphabet(*at(s.s, i)) && (*at(s.s, i)) != ('/') && (*at(s.s, i)) != ('+') {
 				return false
 			}
 		}
 	}
-	switch int32(*at(s.s, 42)) {
+	switch *at(s.s, 42) {
 	case 'A', 'E', 'I', 'M', 'Q', 'U', 'Y', 'c', 'g', 'k', 'o', 's', 'w', '4', '8', '0':
 		{
 		}
@@ -146,32 +146,32 @@ func isValidKey(s stringSpan) bool {
 }
 
 func isValidHostname(s stringSpan) bool {
-	var num_digit = uint32(int32(0))
-	var num_entity = uint32(s.len)
-	if uint32(s.len) > uint32(uint32(int32(63))) || s.len == 0 {
+	var num_digit = (0)
+	var num_entity = (s.len)
+	if (s.len) > (63) || s.len == 0 {
 		return false
 	}
-	if int32(*s.s) == int32('-') || int32(*at(s.s, uint32(uint32(s.len)-uint32(uint32(int32(1)))))) == int32('-') {
+	if (*s.s) == ('-') || (*at(s.s, ((s.len) - (1)))) == ('-') {
 		return false
 	}
-	if int32(*s.s) == int32('.') || int32(*at(s.s, uint32(uint32(s.len)-uint32(uint32(int32(1)))))) == int32('.') {
+	if (*s.s) == ('.') || (*at(s.s, ((s.len) - (1)))) == ('.') {
 		return false
 	}
 	{
-		var i = uint32(int32(0))
-		for ; i < uint32(s.len); i++ {
+		var i = (0)
+		for ; i < (s.len); i++ {
 			if isDecimal(*at(s.s, i)) {
 				num_digit += 1
 				continue
 			}
-			if int32(*at(s.s, i)) == int32('.') {
+			if (*at(s.s, i)) == ('.') {
 				num_entity -= 1
 				continue
 			}
-			if !isAlphabet(*at(s.s, i)) && int32(*at(s.s, i)) != int32('-') {
+			if !isAlphabet(*at(s.s, i)) && (*at(s.s, i)) != ('-') {
 				return false
 			}
-			if uint32(i) != 0 && int32(*at(s.s, i)) == int32('.') && int32(*at(s.s, uint32(i-uint32(uint32(int32(1)))))) == int32('.') {
+			if (i) != 0 && (*at(s.s, i)) == ('.') && (*at(s.s, (i - (1)))) == ('.') {
 				return false
 			}
 		}
@@ -181,83 +181,83 @@ func isValidHostname(s stringSpan) bool {
 
 func isValidIPv4(s stringSpan) bool {
 	{
-		var j uint32
-		var i = uint32(int32(0))
-		var pos = uint32(int32(0))
-		for ; i < uint32(uint32(int32(4))) && pos < uint32(s.len); i++ {
-			var val = uint32(int32(0))
-			for j = uint32(int32(0)); j < uint32(uint32(int32(3))) && pos+j < uint32(s.len) && isDecimal(*at(s.s, pos+j)); j++ {
-				val = uint32(uint32(uint32(int32(10))*uint32(uint32(val)) + uint32(*at(s.s, pos+j)) - uint32('0')))
+		var j int
+		var i = (0)
+		var pos = (0)
+		for ; i < (4) && pos < (s.len); i++ {
+			var val = (0)
+			for j = (0); j < (3) && pos+j < (s.len) && isDecimal(*at(s.s, pos+j)); j++ {
+				val = ((10)*(val) + int(*at(s.s, pos+j)) - ('0'))
 			}
-			if j == uint32(uint32(int32(0))) || j > uint32(uint32(int32(1))) && int32(*at(s.s, pos)) == int32('0') || val > uint32(uint32(uint32(int32(255)))) {
+			if j == (0) || j > (1) && (*at(s.s, pos)) == ('0') || val > (255) {
 				return false
 			}
-			if pos+j == uint32(s.len) && i == uint32(uint32(int32(3))) {
+			if pos+j == (s.len) && i == (3) {
 				return true
 			}
-			if int32(*at(s.s, pos+j)) != int32('.') {
+			if (*at(s.s, pos+j)) != ('.') {
 				return false
 			}
-			pos += j + uint32(uint32(int32(1)))
+			pos += j + (1)
 		}
 	}
 	return false
 }
 
 func isValidIPv6(s stringSpan) bool {
-	var pos = uint32(int32(0))
+	var pos = (0)
 	var seenColon = false
-	if uint32(s.len) < uint32(uint32(int32(2))) {
+	if (s.len) < (2) {
 		return false
 	}
-	if int32(*at(s.s, pos)) == int32(':') && int32(*at(s.s, func() uint32 {
+	if (*at(s.s, pos)) == (':') && (*at(s.s, func() int {
 		pos += 1
 		return pos
-	}())) != int32(':') {
+	}())) != (':') {
 		return false
 	}
-	if int32(*at(s.s, uint32(uint32(s.len)-uint32(uint32(int32(1)))))) == int32(':') && int32(*at(s.s, uint32(uint32(s.len)-uint32(uint32(int32(2)))))) != int32(':') {
+	if (*at(s.s, ((s.len) - (1)))) == (':') && (*at(s.s, ((s.len) - (2)))) != (':') {
 		return false
 	}
 	{
-		var j uint32
-		var i = uint32(int32(0))
-		for ; pos < uint32(s.len); i++ {
-			if int32(*at(s.s, pos)) == int32(':') && !seenColon {
+		var j int
+		var i = (0)
+		for ; pos < (s.len); i++ {
+			if (*at(s.s, pos)) == (':') && !seenColon {
 				seenColon = true
-				if func() uint32 {
+				if func() int {
 					pos += 1
 					return pos
-				}() == uint32(s.len) {
+				}() == (s.len) {
 					break
 				}
-				if i == uint32(uint32(int32(7))) {
+				if i == (7) {
 					return false
 				}
 				continue
 			}
-			for j = uint32(int32(0)); ; j++ {
-				if j < uint32(uint32(int32(4))) && pos+j < uint32(s.len) && isHexadecimal(*at(s.s, pos+j)) {
+			for j = (0); ; j++ {
+				if j < (4) && pos+j < (s.len) && isHexadecimal(*at(s.s, pos+j)) {
 					continue
 				}
 				break
 			}
-			if j == uint32(uint32(int32(0))) {
+			if j == (0) {
 				return false
 			}
-			if pos+j == uint32(s.len) && (seenColon || i == uint32(uint32(int32(7)))) {
+			if pos+j == (s.len) && (seenColon || i == (7)) {
 				break
 			}
-			if i == uint32(uint32(int32(7))) {
+			if i == (7) {
 				return false
 			}
-			if int32(*at(s.s, pos+j)) != int32(':') {
-				if int32(*at(s.s, pos+j)) != int32('.') || i < uint32(uint32(int32(6))) && !seenColon {
+			if (*at(s.s, pos+j)) != (':') {
+				if (*at(s.s, pos+j)) != ('.') || i < (6) && !seenColon {
 					return false
 				}
-				return isValidIPv4(stringSpan{at(s.s, pos), uint32(s.len) - pos})
+				return isValidIPv4(stringSpan{at(s.s, pos), (s.len) - pos})
 			}
-			pos += j + uint32(uint32(int32(1)))
+			pos += j + (1)
 		}
 	}
 	return true
@@ -265,18 +265,18 @@ func isValidIPv6(s stringSpan) bool {
 
 /* Bound this around 32 bits, so that we don't have to write overflow logic. */
 func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
-	var val = uint64(int32(0))
-	if uint32(s.len) > uint32(uint32(int32(10))) || s.len == 0 {
+	var val = uint64(0)
+	if (s.len) > (10) || s.len == 0 {
 		return false
 	}
-	if support_hex && uint32(s.len) > uint32(uint32(int32(2))) && int32(*s.s) == int32('0') && int32(*at(s.s, 1)) == int32('x') {
+	if support_hex && (s.len) > (2) && (*s.s) == ('0') && (*at(s.s, 1)) == ('x') {
 		{
-			var i = uint32(int32(2))
-			for ; i < uint32(s.len); i++ {
-				if uint32(*at(s.s, i))-uint32('0') < uint32(int32(10)) {
-					val = uint64(uint64(uint32(int32(16))*uint32(uint64(val)) + uint32(int32(*at(s.s, i))-int32('0'))))
-				} else if uint32(*at(s.s, i))|uint32(int32(32))-uint32('a') < uint32(int32(6)) {
-					val = uint64(uint64(uint32(int32(16))*uint32(uint64(val)) + uint32(int32(*at(s.s, i))|int32(32)) - uint32('a') + uint32(int32(10))))
+			var i = (2)
+			for ; i < (s.len); i++ {
+				if (*at(s.s, i))-('0') < (10) {
+					val = ((16)*(val) + uint64((*at(s.s, i))-('0')))
+				} else if (*at(s.s, i))|(32)-('a') < (6) {
+					val = ((16)*(val) + uint64((*at(s.s, i))|(32)) - ('a') + (10))
 				} else {
 					return false
 				}
@@ -284,12 +284,12 @@ func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
 		}
 	} else {
 		{
-			var i = uint32(int32(0))
-			for ; i < uint32(s.len); i++ {
+			var i = (0)
+			for ; i < (s.len); i++ {
 				if !isDecimal(*at(s.s, i)) {
 					return false
 				}
-				val = uint64(uint64(uint32(int32(10))*uint32(uint64(val)) + uint32(*at(s.s, i)) - uint32('0')))
+				val = ((10)*(val) + uint64(*at(s.s, i)) - ('0'))
 			}
 		}
 	}
@@ -297,25 +297,25 @@ func isValidUint(s stringSpan, support_hex bool, min uint64, max uint64) bool {
 }
 
 func isValidPort(s stringSpan) bool {
-	return isValidUint(s, false, uint64(int32(0)), uint64(int32(65535)))
+	return isValidUint(s, false, (0), (65535))
 }
 
 func isValidMTU(s stringSpan) bool {
-	return isValidUint(s, false, uint64(int32(576)), uint64(int32(65535)))
+	return isValidUint(s, false, (576), (65535))
 }
 
 func isValidPersistentKeepAlive(s stringSpan) bool {
 	if isSame(s, &[]byte("off\x00")[0]) {
 		return true
 	}
-	return isValidUint(s, false, uint64(int32(0)), uint64(int32(65535)))
+	return isValidUint(s, false, (0), (65535))
 }
 
 func isValidFwMark(s stringSpan) bool {
 	if isSame(s, &[]byte("off\x00")[0]) {
 		return true
 	}
-	return isValidUint(s, true, uint64(int32(0)), uint64(4294967295))
+	return isValidUint(s, true, (0), (4294967295))
 }
 
 /* This pretty much invalidates the other checks, but rt_names.c's
@@ -327,10 +327,10 @@ func isValidTable(s stringSpan) bool {
 	if isSame(s, &[]byte("off\x00")[0]) {
 		return true
 	}
-	if uint32(s.len) < uint32(uint32(int32(512))) {
+	if (s.len) < (512) {
 		return true
 	}
-	return isValidUint(s, false, uint64(int32(0)), uint64(4294967295))
+	return isValidUint(s, false, (0), (4294967295))
 }
 
 func isValidSaveConfig(s stringSpan) bool {
@@ -344,13 +344,13 @@ func isValidPrePostUpDown(s stringSpan) bool {
 }
 
 func isValidScope(s stringSpan) bool {
-	if uint32(s.len) > uint32(uint32(int32(64))) || s.len == 0 {
+	if (s.len) > (64) || s.len == 0 {
 		return false
 	}
 	{
-		var i = uint32(int32(0))
-		for ; i < uint32(s.len); i++ {
-			if isAlphabet(*at(s.s, i)) && !isDecimal(*at(s.s, i)) && int32(*at(s.s, i)) != int32('_') && int32(*at(s.s, i)) != int32('=') && int32(*at(s.s, i)) != int32('+') && int32(*at(s.s, i)) != int32('.') && int32(*at(s.s, i)) != int32('-') {
+		var i = (0)
+		for ; i < (s.len); i++ {
+			if isAlphabet(*at(s.s, i)) && !isDecimal(*at(s.s, i)) && (*at(s.s, i)) != ('_') && (*at(s.s, i)) != ('=') && (*at(s.s, i)) != ('+') && (*at(s.s, i)) != ('.') && (*at(s.s, i)) != ('-') {
 				return false
 			}
 		}
@@ -362,13 +362,13 @@ func isValidEndpoint(s stringSpan) bool {
 	if s.len == 0 {
 		return false
 	}
-	if int32(*s.s) == int32('[') {
+	if (*s.s) == ('[') {
 		var seenScope = false
-		var hostspan = stringSpan{at(s.s, 1), uint32(int32(0))}
+		var hostspan = stringSpan{at(s.s, 1), (0)}
 		{
-			var i = uint32(int32(1))
-			for ; i < uint32(s.len); i++ {
-				if int32(*at(s.s, i)) == int32('%') {
+			var i = (1)
+			for ; i < (s.len); i++ {
+				if (*at(s.s, i)) == ('%') {
 					if seenScope {
 						return false
 					}
@@ -376,8 +376,8 @@ func isValidEndpoint(s stringSpan) bool {
 					if !isValidIPv6(hostspan) {
 						return false
 					}
-					hostspan = stringSpan{at(s.s, i+1), uint32(int32(0))}
-				} else if int32(*at(s.s, i)) == int32(']') {
+					hostspan = stringSpan{at(s.s, i+1), (0)}
+				} else if (*at(s.s, i)) == (']') {
 					if seenScope {
 						if !isValidScope(hostspan) {
 							return false
@@ -385,23 +385,23 @@ func isValidEndpoint(s stringSpan) bool {
 					} else if !isValidIPv6(hostspan) {
 						return false
 					}
-					if i == uint32(s.len)-uint32(uint32(int32(1))) || int32(*at(s.s, uint32(i+uint32(uint32(int32(1)))))) != int32(':') {
+					if i == (s.len)-(1) || (*at(s.s, (i + (1)))) != (':') {
 						return false
 					}
-					return isValidPort(stringSpan{at(s.s, i+2), uint32(s.len) - i - uint32(uint32(int32(2)))})
+					return isValidPort(stringSpan{at(s.s, i+2), (s.len) - i - (2)})
 				} else {
-					hostspan.len += uint32(uint32(int32(1)))
+					hostspan.len += (1)
 				}
 			}
 		}
 		return false
 	}
 	{
-		var i = uint32(int32(0))
-		for ; i < uint32(s.len); i++ {
-			if int32(*at(s.s, i)) == int32(':') {
-				var host = stringSpan{s.s, uint32(i)}
-				var port = stringSpan{at(s.s, i+1), uint32(s.len) - i - uint32(uint32(int32(1)))}
+		var i = (0)
+		for ; i < (s.len); i++ {
+			if (*at(s.s, i)) == (':') {
+				var host = stringSpan{s.s, (i)}
+				var port = stringSpan{at(s.s, i+1), (s.len) - i - (1)}
 				return isValidPort(port) && (isValidIPv4(host) || isValidHostname(host))
 			}
 		}
@@ -411,28 +411,28 @@ func isValidEndpoint(s stringSpan) bool {
 
 func isValidNetwork(s stringSpan) bool {
 	{
-		var i = uint32(int32(0))
-		for ; i < uint32(s.len); i++ {
-			if int32(*at(s.s, i)) == int32('/') {
-				var ip = stringSpan{s.s, uint32(i)}
-				var cidr = stringSpan{at(s.s, i+1), uint32(s.len) - i - uint32(uint32(int32(1)))}
-				var cidrval = uint16(int32(0))
-				if uint32(cidr.len) > uint32(uint32(int32(3))) || cidr.len == 0 {
+		var i = (0)
+		for ; i < (s.len); i++ {
+			if (*at(s.s, i)) == ('/') {
+				var ip = stringSpan{s.s, (i)}
+				var cidr = stringSpan{at(s.s, i+1), (s.len) - i - (1)}
+				var cidrval = uint16(0)
+				if (cidr.len) > (3) || cidr.len == 0 {
 					return false
 				}
 				{
-					var j = uint32(int32(0))
-					for ; j < uint32(cidr.len); j++ {
+					var j = (0)
+					for ; j < (cidr.len); j++ {
 						if !isDecimal(*at(cidr.s, j)) {
 							return false
 						}
-						cidrval = uint16(uint16(uint16(int32(10)*int32(uint16(uint16(cidrval))) + int32(*at(cidr.s, j)) - int32('0'))))
+						cidrval = ((10)*(cidrval) + uint16(*at(cidr.s, j)) - ('0'))
 					}
 				}
 				if isValidIPv4(ip) {
-					return int32(uint16(uint16(cidrval))) <= int32(32)
+					return (cidrval) <= (32)
 				} else if isValidIPv6(ip) {
-					return int32(uint16(uint16(cidrval))) <= int32(128)
+					return (cidrval) <= (128)
 				}
 				return false
 			}
@@ -467,10 +467,10 @@ const (
 )
 
 func sectionForField(t field) field {
-	if uint32(int32(t)) > uint32(int32(InterfaceSection)) && uint32(int32(t)) < uint32(int32(PeerSection)) {
+	if (t) > (InterfaceSection) && (t) < (PeerSection) {
 		return InterfaceSection
 	}
-	if uint32(int32(t)) > uint32(int32(PeerSection)) && uint32(int32(t)) < uint32(int32(Invalid)) {
+	if (t) > (PeerSection) && (t) < (Invalid) {
 		return PeerSection
 	}
 	return Invalid
@@ -544,13 +544,13 @@ func appendHighlightSpan(a *highlightSpanArray, o *byte, s stringSpan, t highlig
 	if s.len == 0 {
 		return true
 	}
-	addToArray(a, &highlightSpan{t, uint32(int64(uintptr(unsafe.Pointer(s.s))) - int64(uintptr(unsafe.Pointer(o)))), uint32(s.len)})
+	addToArray(a, &highlightSpan{t, int((uintptr(unsafe.Pointer(s.s))) - (uintptr(unsafe.Pointer(o)))), (s.len)})
 	return true
 }
 
 func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
-	switch uint32(int32(section)) {
-	case uint32(DNS):
+	switch section {
+	case (DNS):
 		{
 			if isValidIPv4(s) || isValidIPv6(s) {
 				appendHighlightSpan(ret, parent.s, s, highlightIP)
@@ -560,24 +560,24 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 				appendHighlightSpan(ret, parent.s, s, highlightError)
 			}
 		}
-	case uint32(Address), uint32(AllowedIPs):
+	case (Address), (AllowedIPs):
 		{
-			var slash uint32
+			var slash int
 			if !isValidNetwork(s) {
 				appendHighlightSpan(ret, parent.s, s, highlightError)
 				break
 			}
-			for slash = uint32(int32(0)); slash < uint32(s.len); slash++ {
-				if int32(*at(s.s, slash)) == int32('/') {
+			for slash = (0); slash < (s.len); slash++ {
+				if (*at(s.s, slash)) == ('/') {
 					break
 				}
 			}
-			if slash == uint32(s.len) {
+			if slash == (s.len) {
 				appendHighlightSpan(ret, parent.s, s, highlightIP)
 			} else {
-				appendHighlightSpan(ret, parent.s, stringSpan{s.s, uint32(slash)}, highlightIP)
-				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, slash), uint32(int32(1))}, highlightDelimiter)
-				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, slash+1), uint32(s.len) - slash - uint32(uint32(int32(1)))}, highlightCidr)
+				appendHighlightSpan(ret, parent.s, stringSpan{s.s, (slash)}, highlightIP)
+				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, slash), (1)}, highlightDelimiter)
+				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, slash+1), (s.len) - slash - (1)}, highlightCidr)
 			}
 		}
 	default:
@@ -588,25 +588,25 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 }
 
 func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
-	var currentSpan = stringSpan{s.s, uint32(int32(0))}
-	var lenAtLastSpace = uint32(int32(0))
+	var currentSpan = stringSpan{s.s, (0)}
+	var lenAtLastSpace = (0)
 	{
-		var i = uint32(int32(0))
-		for ; i < uint32(s.len); i++ {
-			if int32(*at(s.s, i)) == int32(',') {
+		var i = (0)
+		for ; i < (s.len); i++ {
+			if (*at(s.s, i)) == (',') {
 				currentSpan.len = lenAtLastSpace
 				highlightMultivalueValue(ret, stringSpan(parent), stringSpan(currentSpan), section)
-				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, i), uint32(int32(1))}, highlightDelimiter)
-				lenAtLastSpace = uint32(int32(0))
-				currentSpan = stringSpan{at(s.s, i+1), uint32(int32(0))}
-			} else if int32(*at(s.s, i)) == int32(' ') || int32(*at(s.s, i)) == int32('\t') {
-				if int64(uintptr(unsafe.Pointer(&*at(s.s, i)))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
+				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, i), (1)}, highlightDelimiter)
+				lenAtLastSpace = (0)
+				currentSpan = stringSpan{at(s.s, i+1), (0)}
+			} else if (*at(s.s, i)) == (' ') || (*at(s.s, i)) == ('\t') {
+				if (uintptr(unsafe.Pointer(&*at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = at(currentSpan.s, 1)
 				} else {
-					currentSpan.len += uint32(uint32(int32(1)))
+					currentSpan.len += (1)
 				}
 			} else {
-				lenAtLastSpace = func() uint32 {
+				lenAtLastSpace = func() int {
 					tempVar := &currentSpan.len
 					*tempVar += 1
 					return *tempVar
@@ -615,144 +615,144 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 		}
 	}
 	currentSpan.len = lenAtLastSpace
-	if uint32(uint32(currentSpan.len)) != 0 {
+	if (currentSpan.len) != 0 {
 		highlightMultivalueValue(ret, stringSpan(parent), stringSpan(currentSpan), section)
-	} else if uint32(int32((*((*highlightSpan)(func() unsafe.Pointer {
+	} else if ((*((*highlightSpan)(func() unsafe.Pointer {
 		tempVar := (*ret).spans
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32((*ret).len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
-	}()))).t)) == uint32(int32(highlightDelimiter)) {
+		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)((((*ret).len)-(1)))*unsafe.Sizeof(*tempVar))
+	}()))).t) == (highlightDelimiter) {
 		(*((*highlightSpan)(func() unsafe.Pointer {
 			tempVar := (*ret).spans
-			return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32((*ret).len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
+			return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)((((*ret).len)-(1)))*unsafe.Sizeof(*tempVar))
 		}()))).t = highlightError
 	}
 }
 
 func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
-	switch uint32(int32(section)) {
-	case uint32(PrivateKey):
+	switch section {
+	case (PrivateKey):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidKey(s) {
-					return int32(highlightPrivateKey)
+					return (highlightPrivateKey)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(PublicKey):
+	case (PublicKey):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidKey(s) {
-					return int32(highlightPublicKey)
+					return (highlightPublicKey)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(PresharedKey):
+	case (PresharedKey):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidKey(s) {
-					return int32(highlightPresharedKey)
+					return (highlightPresharedKey)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(MTU):
+	case (MTU):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidMTU(s) {
-					return int32(highlightMTU)
+					return (highlightMTU)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(SaveConfig):
+	case (SaveConfig):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidSaveConfig(s) {
-					return int32(highlightSaveConfig)
+					return (highlightSaveConfig)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(FwMark):
+	case (FwMark):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidFwMark(s) {
-					return int32(highlightFwMark)
+					return (highlightFwMark)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(Table):
+	case (Table):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidTable(s) {
-					return int32(highlightTable)
+					return (highlightTable)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(PreUp), uint32(PostUp), uint32(PreDown), uint32(PostDown):
+	case (PreUp), (PostUp), (PreDown), (PostDown):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidPrePostUpDown(s) {
-					return int32(highlightCmd)
+					return (highlightCmd)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
 
-	case uint32(ListenPort):
+	case (ListenPort):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidPort(s) {
-					return int32(highlightPort)
+					return (highlightPort)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(PersistentKeepalive):
+	case (PersistentKeepalive):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
 				if isValidPersistentKeepAlive(s) {
-					return int32(highlightKeepalive)
+					return (highlightKeepalive)
 				} else {
-					return int32(highlightError)
+					return (highlightError)
 				}
 			}()))
 		}
-	case uint32(Endpoint):
+	case (Endpoint):
 		{
-			var colon uint32
+			var colon int
 			if !isValidEndpoint(s) {
 				appendHighlightSpan(ret, parent.s, s, highlightError)
 				break
 			}
-			for colon = uint32(s.len); func() uint32 {
+			for colon = (s.len); func() int {
 				defer func() {
 					colon -= 1
 				}()
 				return colon
-			}() > uint32(uint32(int32(0))); {
-				if int32(*at(s.s, colon)) == int32(':') {
+			}() > (0); {
+				if (*at(s.s, colon)) == (':') {
 					break
 				}
 			}
-			appendHighlightSpan(ret, parent.s, stringSpan{s.s, uint32(colon)}, highlightHost)
-			appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, colon), uint32(int32(1))}, highlightDelimiter)
-			appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, colon+1), uint32(s.len) - colon - uint32(uint32(int32(1)))}, highlightPort)
+			appendHighlightSpan(ret, parent.s, stringSpan{s.s, (colon)}, highlightHost)
+			appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, colon), (1)}, highlightDelimiter)
+			appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, colon+1), (s.len) - colon - (1)}, highlightPort)
 		}
-	case uint32(Address), uint32(DNS), uint32(AllowedIPs):
+	case (Address), (DNS), (AllowedIPs):
 		{
 			highlightMultivalue(ret, stringSpan(parent), stringSpan(s), section)
 		}
@@ -775,84 +775,84 @@ const (
 
 func highlightConfigInt(config *byte) []highlightSpan {
 	var ret highlightSpanArray
-	var s = stringSpan{config, uint32(uint32(cStrlen(config)))}
-	var currentSpan = stringSpan{s.s, uint32(int32(0))}
+	var s = stringSpan{config, (cStrlen(config))}
+	var currentSpan = stringSpan{s.s, (0)}
 	var currentSection field = Invalid
 	var currentField field = Invalid
 	var state = OnNone
-	var lenAtLastSpace = uint32(int32(0))
-	var equalsLocation = uint32(int32(0))
+	var lenAtLastSpace = (0)
+	var equalsLocation = (0)
 	{
-		var i = uint32(int32(0))
-		for ; i <= uint32(s.len); i++ {
-			if i == uint32(s.len) || int32(*at(s.s, i)) == int32('\n') || uint32(int32(state)) != uint32(int32(OnComment)) && int32(*at(s.s, i)) == int32('#') {
-				if uint32(int32(state)) == uint32(int32(OnKey)) {
+		var i = (0)
+		for ; i <= (s.len); i++ {
+			if i == (s.len) || (*at(s.s, i)) == ('\n') || (state) != (OnComment) && (*at(s.s, i)) == ('#') {
+				if (state) == (OnKey) {
 					currentSpan.len = lenAtLastSpace
 					appendHighlightSpan(&ret, s.s, currentSpan, highlightError)
-				} else if uint32(int32(state)) == uint32(int32(OnValue)) {
-					if uint32(uint32(currentSpan.len)) != 0 {
-						appendHighlightSpan(&ret, s.s, stringSpan{at(s.s, equalsLocation), uint32(int32(1))}, highlightDelimiter)
+				} else if (state) == (OnValue) {
+					if (currentSpan.len) != 0 {
+						appendHighlightSpan(&ret, s.s, stringSpan{at(s.s, equalsLocation), (1)}, highlightDelimiter)
 						currentSpan.len = lenAtLastSpace
 						highlightValue(&ret, stringSpan(s), stringSpan(currentSpan), currentField)
 					} else {
-						appendHighlightSpan(&ret, s.s, stringSpan{at(s.s, equalsLocation), uint32(int32(1))}, highlightError)
+						appendHighlightSpan(&ret, s.s, stringSpan{at(s.s, equalsLocation), (1)}, highlightError)
 					}
-				} else if uint32(int32(state)) == uint32(int32(OnSection)) {
+				} else if (state) == (OnSection) {
 					currentSpan.len = lenAtLastSpace
 					currentSection = getSectionType(currentSpan)
-					appendHighlightSpan(&ret, s.s, currentSpan, highlight(func() int32 {
-						if uint32(int32(currentSection)) == uint32(int32(Invalid)) {
-							return int32(highlightError)
+					appendHighlightSpan(&ret, s.s, currentSpan, highlight(func() highlight {
+						if (currentSection) == (Invalid) {
+							return (highlightError)
 						} else {
-							return int32(highlightSection)
+							return (highlightSection)
 						}
 					}()))
-				} else if uint32(int32(state)) == uint32(int32(OnComment)) {
+				} else if (state) == (OnComment) {
 					appendHighlightSpan(&ret, s.s, currentSpan, highlightComment)
 				}
-				if i == uint32(s.len) {
+				if i == (s.len) {
 					break
 				}
-				lenAtLastSpace = uint32(int32(0))
+				lenAtLastSpace = (0)
 				currentField = Invalid
-				if int32(*at(s.s, i)) == int32('#') {
-					currentSpan = stringSpan{at(s.s, i), uint32(int32(1))}
+				if (*at(s.s, i)) == ('#') {
+					currentSpan = stringSpan{at(s.s, i), (1)}
 					state = OnComment
 				} else {
-					currentSpan = stringSpan{at(s.s, i+1), uint32(int32(0))}
+					currentSpan = stringSpan{at(s.s, i+1), (0)}
 					state = OnNone
 				}
-			} else if uint32(int32(state)) == uint32(int32(OnComment)) {
-				currentSpan.len += uint32(uint32(int32(1)))
-			} else if int32(*at(s.s, i)) == int32(' ') || int32(*at(s.s, i)) == int32('\t') {
-				if int64(uintptr(unsafe.Pointer(&*at(s.s, i)))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
+			} else if (state) == (OnComment) {
+				currentSpan.len += (1)
+			} else if (*at(s.s, i)) == (' ') || (*at(s.s, i)) == ('\t') {
+				if (uintptr(unsafe.Pointer(&*at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = at(currentSpan.s, 1)
 				} else {
-					currentSpan.len += uint32(uint32(int32(1)))
+					currentSpan.len += (1)
 				}
-			} else if int32(*at(s.s, i)) == int32('=') && uint32(int32(state)) == uint32(int32(OnKey)) {
+			} else if (*at(s.s, i)) == ('=') && (state) == (OnKey) {
 				currentSpan.len = lenAtLastSpace
 				currentField = getField(currentSpan)
 				var section = sectionForField(currentField)
-				if uint32(int32(section)) == uint32(int32(Invalid)) || uint32(int32(currentField)) == uint32(int32(Invalid)) || uint32(int32(section)) != uint32(int32(currentSection)) {
+				if (section) == (Invalid) || (currentField) == (Invalid) || (section) != (currentSection) {
 					appendHighlightSpan(&ret, s.s, currentSpan, highlightError)
 				} else {
 					appendHighlightSpan(&ret, s.s, currentSpan, highlightField)
 				}
 				equalsLocation = i
-				currentSpan = stringSpan{at(s.s, i+1), uint32(int32(0))}
+				currentSpan = stringSpan{at(s.s, i+1), (0)}
 				state = OnValue
 			} else {
-				if uint32(int32(state)) == uint32(int32(OnNone)) {
+				if (state) == (OnNone) {
 					state = parserState(func() int32 {
-						if int32(*at(s.s, i)) == int32('[') {
-							return int32(OnSection)
+						if (*at(s.s, i)) == ('[') {
+							return (OnSection)
 						} else {
-							return int32(OnKey)
+							return (OnKey)
 						}
 					}())
 				}
-				lenAtLastSpace = func() uint32 {
+				lenAtLastSpace = func() int {
 					tempVar := &currentSpan.len
 					*tempVar += 1
 					return *tempVar
