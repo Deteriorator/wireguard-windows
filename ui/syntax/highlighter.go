@@ -488,26 +488,26 @@ func (s stringSpan) sectionType() field {
 
 type highlightSpanArray []highlightSpan
 
-func (a *highlightSpanArray) append(o *byte, s stringSpan, t highlight) {
+func (hsa *highlightSpanArray) append(o *byte, s stringSpan, t highlight) {
 	if s.len == 0 {
 		return
 	}
-	*a = append(*a, highlightSpan{t, int((uintptr(unsafe.Pointer(s.s))) - (uintptr(unsafe.Pointer(o)))), s.len})
+	*hsa = append(*hsa, highlightSpan{t, int((uintptr(unsafe.Pointer(s.s))) - (uintptr(unsafe.Pointer(o)))), s.len})
 }
 
-func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
+func (hsa *highlightSpanArray) highlightMultivalueValue(parent stringSpan, s stringSpan, section field) {
 	switch section {
 	case DNS:
 		if s.isValidIPv4() || s.isValidIPv6() {
-			ret.append(parent.s, s, highlightIP)
+			hsa.append(parent.s, s, highlightIP)
 		} else if s.isValidHostname() {
-			ret.append(parent.s, s, highlightHost)
+			hsa.append(parent.s, s, highlightHost)
 		} else {
-			ret.append(parent.s, s, highlightError)
+			hsa.append(parent.s, s, highlightError)
 		}
 	case Address, AllowedIPs:
 		if !s.isValidNetwork() {
-			ret.append(parent.s, s, highlightError)
+			hsa.append(parent.s, s, highlightError)
 			break
 		}
 		slash := 0
@@ -517,25 +517,25 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 			}
 		}
 		if slash == s.len {
-			ret.append(parent.s, s, highlightIP)
+			hsa.append(parent.s, s, highlightIP)
 		} else {
-			ret.append(parent.s, stringSpan{s.s, slash}, highlightIP)
-			ret.append(parent.s, stringSpan{at(s.s, slash), 1}, highlightDelimiter)
-			ret.append(parent.s, stringSpan{at(s.s, slash+1), s.len - slash - 1}, highlightCidr)
+			hsa.append(parent.s, stringSpan{s.s, slash}, highlightIP)
+			hsa.append(parent.s, stringSpan{at(s.s, slash), 1}, highlightDelimiter)
+			hsa.append(parent.s, stringSpan{at(s.s, slash+1), s.len - slash - 1}, highlightCidr)
 		}
 	default:
-		ret.append(parent.s, s, highlightError)
+		hsa.append(parent.s, s, highlightError)
 	}
 }
 
-func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
+func (hsa *highlightSpanArray) highlightMultivalue(parent stringSpan, s stringSpan, section field) {
 	currentSpan := stringSpan{s.s, 0}
 	lenAtLastSpace := 0
 	for i := 0; i < s.len; i++ {
 		if *at(s.s, i) == ',' {
 			currentSpan.len = lenAtLastSpace
-			highlightMultivalueValue(ret, parent, currentSpan, section)
-			ret.append(parent.s, stringSpan{at(s.s, i), 1}, highlightDelimiter)
+			hsa.highlightMultivalueValue(parent, currentSpan, section)
+			hsa.append(parent.s, stringSpan{at(s.s, i), 1}, highlightDelimiter)
 			lenAtLastSpace = 0
 			currentSpan = stringSpan{at(s.s, i+1), 0}
 		} else if *at(s.s, i) == ' ' || *at(s.s, i) == '\t' {
@@ -551,37 +551,37 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 	}
 	currentSpan.len = lenAtLastSpace
 	if currentSpan.len != 0 {
-		highlightMultivalueValue(ret, parent, currentSpan, section)
-	} else if (*ret)[len(*ret)-1].t == highlightDelimiter {
-		(*ret)[len(*ret)-1].t = highlightError
+		hsa.highlightMultivalueValue(parent, currentSpan, section)
+	} else if (*hsa)[len(*hsa)-1].t == highlightDelimiter {
+		(*hsa)[len(*hsa)-1].t = highlightError
 	}
 }
 
-func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
+func (hsa *highlightSpanArray) highlightValue(parent stringSpan, s stringSpan, section field) {
 	switch section {
 	case PrivateKey:
-		ret.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPrivateKey))
+		hsa.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPrivateKey))
 	case PublicKey:
-		ret.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPublicKey))
+		hsa.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPublicKey))
 	case PresharedKey:
-		ret.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPresharedKey))
+		hsa.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPresharedKey))
 	case MTU:
-		ret.append(parent.s, s, validateHighlight(s.isValidMTU(), highlightMTU))
+		hsa.append(parent.s, s, validateHighlight(s.isValidMTU(), highlightMTU))
 	case SaveConfig:
-		ret.append(parent.s, s, validateHighlight(s.isValidSaveConfig(), highlightSaveConfig))
+		hsa.append(parent.s, s, validateHighlight(s.isValidSaveConfig(), highlightSaveConfig))
 	case FwMark:
-		ret.append(parent.s, s, validateHighlight(s.isValidFwMark(), highlightFwMark))
+		hsa.append(parent.s, s, validateHighlight(s.isValidFwMark(), highlightFwMark))
 	case Table:
-		ret.append(parent.s, s, validateHighlight(s.isValidTable(), highlightTable))
+		hsa.append(parent.s, s, validateHighlight(s.isValidTable(), highlightTable))
 	case PreUp, PostUp, PreDown, PostDown:
-		ret.append(parent.s, s, validateHighlight(s.isValidPrePostUpDown(), highlightCmd))
+		hsa.append(parent.s, s, validateHighlight(s.isValidPrePostUpDown(), highlightCmd))
 	case ListenPort:
-		ret.append(parent.s, s, validateHighlight(s.isValidPort(), highlightPort))
+		hsa.append(parent.s, s, validateHighlight(s.isValidPort(), highlightPort))
 	case PersistentKeepalive:
-		ret.append(parent.s, s, validateHighlight(s.isValidPersistentKeepAlive(), highlightKeepalive))
+		hsa.append(parent.s, s, validateHighlight(s.isValidPersistentKeepAlive(), highlightKeepalive))
 	case Endpoint:
 		if !s.isValidEndpoint() {
-			ret.append(parent.s, s, highlightError)
+			hsa.append(parent.s, s, highlightError)
 			break
 		}
 		colon := s.len
@@ -591,13 +591,13 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 				break
 			}
 		}
-		ret.append(parent.s, stringSpan{s.s, colon}, highlightHost)
-		ret.append(parent.s, stringSpan{at(s.s, colon), 1}, highlightDelimiter)
-		ret.append(parent.s, stringSpan{at(s.s, colon+1), s.len - colon - 1}, highlightPort)
+		hsa.append(parent.s, stringSpan{s.s, colon}, highlightHost)
+		hsa.append(parent.s, stringSpan{at(s.s, colon), 1}, highlightDelimiter)
+		hsa.append(parent.s, stringSpan{at(s.s, colon+1), s.len - colon - 1}, highlightPort)
 	case Address, DNS, AllowedIPs:
-		highlightMultivalue(ret, parent, s, section)
+		hsa.highlightMultivalue(parent, s, section)
 	default:
-		ret.append(parent.s, s, highlightError)
+		hsa.append(parent.s, s, highlightError)
 	}
 }
 
@@ -626,7 +626,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				if currentSpan.len != 0 {
 					ret.append(s.s, stringSpan{at(s.s, equalsLocation), 1}, highlightDelimiter)
 					currentSpan.len = lenAtLastSpace
-					highlightValue(&ret, s, currentSpan, currentField)
+					ret.highlightValue(s, currentSpan, currentField)
 				} else {
 					ret.append(s.s, stringSpan{at(s.s, equalsLocation), 1}, highlightError)
 				}
@@ -681,7 +681,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 			lenAtLastSpace = currentSpan.len
 		}
 	}
-	return *(*[]highlightSpan)(unsafe.Pointer(&ret))
+	return ([]highlightSpan)(ret)
 }
 
 func highlightConfig(config string) []highlightSpan {
