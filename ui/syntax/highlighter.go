@@ -588,7 +588,7 @@ func isValidEndpoint(s stringSpan) bool {
 	return false
 }
 
-func isValidNetwork(s stringSpan) int8 {
+func isValidNetwork(s stringSpan) bool {
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(s.len); i++ {
@@ -606,7 +606,7 @@ func isValidNetwork(s stringSpan) int8 {
 				}()), uint32(s.len) - i - uint32(uint32(int32(1)))}
 				var cidrval = uint16(int32(0))
 				if uint32(cidr.len) > uint32(uint32(int32(3))) || cNotUint32(uint32(cidr.len)) {
-					return int8(int8(int32(0)))
+					return false
 				}
 				{
 					var j = uint32(int32(0))
@@ -615,7 +615,7 @@ func isValidNetwork(s stringSpan) int8 {
 							tempVar := cidr.s
 							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(j)))*unsafe.Sizeof(*tempVar))
 						}()))) {
-							return int8(int8(int32(0)))
+							return false
 						}
 						cidrval = uint16(uint16(uint16(int32(10)*int32(uint16(uint16(cidrval))) + int32(*((*byte)(func() unsafe.Pointer {
 							tempVar := cidr.s
@@ -624,33 +624,15 @@ func isValidNetwork(s stringSpan) int8 {
 					}
 				}
 				if isValidIPv4(ip) {
-					return int8(int8(func(val bool) int32 {
-						if val {
-							return 1
-						} else {
-							return 0
-						}
-					}(int32(uint16(uint16(cidrval))) <= int32(32))))
+					return int32(uint16(uint16(cidrval))) <= int32(32)
 				} else if isValidIPv6(ip) {
-					return int8(int8(func(val bool) int32 {
-						if val {
-							return 1
-						} else {
-							return 0
-						}
-					}(int32(uint16(uint16(cidrval))) <= int32(128))))
+					return int32(uint16(uint16(cidrval))) <= int32(128)
 				}
-				return int8(int8(int32(0)))
+				return false
 			}
 		}
 	}
-	return int8(int8(func(val bool) int32 {
-		if val {
-			return 1
-		} else {
-			return 0
-		}
-	}(isValidIPv4(s) || isValidIPv6(s))))
+	return isValidIPv4(s) || isValidIPv6(s)
 }
 
 type field int32
@@ -876,7 +858,7 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 	case uint32(Address), uint32(AllowedIPs):
 		{
 			var slash uint32
-			if cNotInt8(isValidNetwork(s)) {
+			if !isValidNetwork(s) {
 				appendHighlightSpan(ret, parent.s, s, highlightError)
 				break
 			}
