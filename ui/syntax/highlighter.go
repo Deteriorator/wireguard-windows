@@ -647,117 +647,50 @@ func sectionForField(t field) field {
 }
 
 func getField(s stringSpan) field {
-	for {
-		if isCaselessSame(s, &[]byte("PrivateKey\x00")[0]) {
-			return PrivateKey
-		}
-		break
+	switch {
+	case isCaselessSame(s, &[]byte("PrivateKey\x00")[0]):
+		return PrivateKey
+	case isCaselessSame(s, &[]byte("ListenPort\x00")[0]):
+		return ListenPort
+	case isCaselessSame(s, &[]byte("Address\x00")[0]):
+		return Address
+	case isCaselessSame(s, &[]byte("DNS\x00")[0]):
+		return DNS
+	case isCaselessSame(s, &[]byte("MTU\x00")[0]):
+		return MTU
+	case isCaselessSame(s, &[]byte("PublicKey\x00")[0]):
+		return PublicKey
+	case isCaselessSame(s, &[]byte("PresharedKey\x00")[0]):
+		return PresharedKey
+	case isCaselessSame(s, &[]byte("AllowedIPs\x00")[0]):
+		return AllowedIPs
+	case isCaselessSame(s, &[]byte("Endpoint\x00")[0]):
+		return Endpoint
+	case isCaselessSame(s, &[]byte("PersistentKeepalive\x00")[0]):
+		return PersistentKeepalive
+	case isCaselessSame(s, &[]byte("FwMark\x00")[0]):
+		return FwMark
+	case isCaselessSame(s, &[]byte("Table\x00")[0]):
+		return Table
+	case isCaselessSame(s, &[]byte("PreUp\x00")[0]):
+		return PreUp
+	case isCaselessSame(s, &[]byte("PostUp\x00")[0]):
+		return PostUp
+	case isCaselessSame(s, &[]byte("PreDown\x00")[0]):
+		return PreDown
+	case isCaselessSame(s, &[]byte("PostDown\x00")[0]):
+		return PostDown
+	case isCaselessSame(s, &[]byte("SaveConfig\x00")[0]):
+		return SaveConfig
 	}
-	for {
-		if isCaselessSame(s, &[]byte("ListenPort\x00")[0]) {
-			return ListenPort
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("Address\x00")[0]) {
-			return Address
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("DNS\x00")[0]) {
-			return DNS
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("MTU\x00")[0]) {
-			return MTU
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("PublicKey\x00")[0]) {
-			return PublicKey
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("PresharedKey\x00")[0]) {
-			return PresharedKey
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("AllowedIPs\x00")[0]) {
-			return AllowedIPs
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("Endpoint\x00")[0]) {
-			return Endpoint
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("PersistentKeepalive\x00")[0]) {
-			return PersistentKeepalive
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("FwMark\x00")[0]) {
-			return FwMark
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("Table\x00")[0]) {
-			return Table
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("PreUp\x00")[0]) {
-			return PreUp
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("PostUp\x00")[0]) {
-			return PostUp
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("PreDown\x00")[0]) {
-			return PreDown
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("PostDown\x00")[0]) {
-			return PostDown
-		}
-		break
-	}
-	for {
-		if isCaselessSame(s, &[]byte("SaveConfig\x00")[0]) {
-			return SaveConfig
-		}
-		break
-	}
-
 	return Invalid
 }
 
 func getSectionType(s stringSpan) field {
-	if isCaselessSame(s, &[]byte("[Peer]\x00")[0]) {
+	switch {
+	case isCaselessSame(s, &[]byte("[Peer]\x00")[0]):
 		return PeerSection
-	}
-	if isCaselessSame(s, &[]byte("[Interface]\x00")[0]) {
+	case isCaselessSame(s, &[]byte("[Interface]\x00")[0]):
 		return InterfaceSection
 	}
 	return Invalid
