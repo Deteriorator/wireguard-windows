@@ -94,14 +94,14 @@ func isAlphabet(c byte) bool {
 	return (c|32) >= 'a' && (c|32) <= 'z'
 }
 
-func isSame(s stringSpan, c *byte) bool {
+func (s stringSpan) isSame(c *byte) bool {
 	if cStrlen(c) != s.len {
 		return false
 	}
 	return cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), s.len) == 0
 }
 
-func isCaselessSame(s stringSpan, c *byte) bool {
+func (s stringSpan) isCaselessSame(c *byte) bool {
 	if cStrlen(c) != s.len {
 		return false
 	}
@@ -123,7 +123,7 @@ func isCaselessSame(s stringSpan, c *byte) bool {
 	return true
 }
 
-func isValidKey(s stringSpan) bool {
+func (s stringSpan) isValidKey() bool {
 	if s.len != 44 || *at(s.s, 43) != '=' {
 		return false
 	}
@@ -139,7 +139,7 @@ func isValidKey(s stringSpan) bool {
 	return false
 }
 
-func isValidHostname(s stringSpan) bool {
+func (s stringSpan) isValidHostname() bool {
 	numDigit := 0
 	numEntity := s.len
 	if s.len > 63 || s.len == 0 {
@@ -170,7 +170,7 @@ func isValidHostname(s stringSpan) bool {
 	return numDigit != numEntity
 }
 
-func isValidIPv4(s stringSpan) bool {
+func (s stringSpan) isValidIPv4() bool {
 	pos := 0
 	for i := 0; i < 4 && pos < s.len; i++ {
 		val := 0
@@ -192,7 +192,7 @@ func isValidIPv4(s stringSpan) bool {
 	return false
 }
 
-func isValidIPv6(s stringSpan) bool {
+func (s stringSpan) isValidIPv6() bool {
 	if s.len < 2 {
 		return false
 	}
@@ -239,7 +239,7 @@ func isValidIPv6(s stringSpan) bool {
 			if *at(s.s, pos+j) != '.' || i < 6 && !seenColon {
 				return false
 			}
-			return isValidIPv4(stringSpan{at(s.s, pos), s.len - pos})
+			return stringSpan{at(s.s, pos), s.len - pos}.isValidIPv4()
 		}
 		pos += j + 1
 	}
@@ -247,7 +247,7 @@ func isValidIPv6(s stringSpan) bool {
 }
 
 // Bound this around 32 bits, so that we don't have to write overflow logic.
-func isValidUint(s stringSpan, supportHex bool, min uint64, max uint64) bool {
+func (s stringSpan) isValidUint(supportHex bool, min uint64, max uint64) bool {
 	if s.len > 10 || s.len == 0 {
 		return false
 	}
@@ -273,52 +273,52 @@ func isValidUint(s stringSpan, supportHex bool, min uint64, max uint64) bool {
 	return val <= max && val >= min
 }
 
-func isValidPort(s stringSpan) bool {
-	return isValidUint(s, false, 0, 65535)
+func (s stringSpan) isValidPort() bool {
+	return s.isValidUint(false, 0, 65535)
 }
 
-func isValidMTU(s stringSpan) bool {
-	return isValidUint(s, false, 576, 65535)
+func (s stringSpan) isValidMTU() bool {
+	return s.isValidUint(false, 576, 65535)
 }
 
-func isValidPersistentKeepAlive(s stringSpan) bool {
-	if isSame(s, &[]byte("off\x00")[0]) {
+func (s stringSpan) isValidPersistentKeepAlive() bool {
+	if s.isSame(&[]byte("off\x00")[0]) {
 		return true
 	}
-	return isValidUint(s, false, 0, 65535)
+	return s.isValidUint(false, 0, 65535)
 }
 
-func isValidFwMark(s stringSpan) bool {
-	if isSame(s, &[]byte("off\x00")[0]) {
+func (s stringSpan) isValidFwMark() bool {
+	if s.isSame(&[]byte("off\x00")[0]) {
 		return true
 	}
-	return isValidUint(s, true, 0, 4294967295)
+	return s.isValidUint(true, 0, 4294967295)
 }
 
 // This pretty much invalidates the other checks, but rt_names.c's fread_id_name does no validation aside from this.
-func isValidTable(s stringSpan) bool {
-	if isSame(s, &[]byte("auto\x00")[0]) {
+func (s stringSpan) isValidTable() bool {
+	if s.isSame(&[]byte("auto\x00")[0]) {
 		return true
 	}
-	if isSame(s, &[]byte("off\x00")[0]) {
+	if s.isSame(&[]byte("off\x00")[0]) {
 		return true
 	}
 	if s.len < 512 {
 		return true
 	}
-	return isValidUint(s, false, 0, 4294967295)
+	return s.isValidUint(false, 0, 4294967295)
 }
 
-func isValidSaveConfig(s stringSpan) bool {
-	return isSame(s, &[]byte("true\x00")[0]) || isSame(s, &[]byte("false\x00")[0])
+func (s stringSpan) isValidSaveConfig() bool {
+	return s.isSame(&[]byte("true\x00")[0]) || s.isSame(&[]byte("false\x00")[0])
 }
 
 // It's probably not worthwhile to try to validate a bash expression. So instead we just demand non-zero length.
-func isValidPrePostUpDown(s stringSpan) bool {
+func (s stringSpan) isValidPrePostUpDown() bool {
 	return s.len != 0
 }
 
-func isValidScope(s stringSpan) bool {
+func (s stringSpan) isValidScope() bool {
 	if s.len > 64 || s.len == 0 {
 		return false
 	}
@@ -330,7 +330,7 @@ func isValidScope(s stringSpan) bool {
 	return true
 }
 
-func isValidEndpoint(s stringSpan) bool {
+func (s stringSpan) isValidEndpoint() bool {
 	if s.len == 0 {
 		return false
 	}
@@ -343,22 +343,22 @@ func isValidEndpoint(s stringSpan) bool {
 					return false
 				}
 				seenScope = true
-				if !isValidIPv6(hostspan) {
+				if !hostspan.isValidIPv6() {
 					return false
 				}
 				hostspan = stringSpan{at(s.s, i+1), 0}
 			} else if *at(s.s, i) == ']' {
 				if seenScope {
-					if !isValidScope(hostspan) {
+					if !hostspan.isValidScope() {
 						return false
 					}
-				} else if !isValidIPv6(hostspan) {
+				} else if !hostspan.isValidIPv6() {
 					return false
 				}
 				if i == s.len-1 || *at(s.s, (i + 1)) != ':' {
 					return false
 				}
-				return isValidPort(stringSpan{at(s.s, i+2), s.len - i - 2})
+				return stringSpan{at(s.s, i+2), s.len - i - 2}.isValidPort()
 			} else {
 				hostspan.len++
 			}
@@ -369,13 +369,13 @@ func isValidEndpoint(s stringSpan) bool {
 		if *at(s.s, i) == ':' {
 			host := stringSpan{s.s, i}
 			port := stringSpan{at(s.s, i+1), s.len - i - 1}
-			return isValidPort(port) && (isValidIPv4(host) || isValidHostname(host))
+			return port.isValidPort() && (host.isValidIPv4() || host.isValidHostname())
 		}
 	}
 	return false
 }
 
-func isValidNetwork(s stringSpan) bool {
+func (s stringSpan) isValidNetwork() bool {
 	for i := 0; i < s.len; i++ {
 		if *at(s.s, i) == '/' {
 			ip := stringSpan{s.s, i}
@@ -390,15 +390,15 @@ func isValidNetwork(s stringSpan) bool {
 				}
 				cidrval = 10*cidrval + uint16(*at(cidr.s, j)-'0')
 			}
-			if isValidIPv4(ip) {
+			if ip.isValidIPv4() {
 				return cidrval <= 32
-			} else if isValidIPv6(ip) {
+			} else if ip.isValidIPv6() {
 				return cidrval <= 128
 			}
 			return false
 		}
 	}
-	return isValidIPv4(s) || isValidIPv6(s)
+	return s.isValidIPv4() || s.isValidIPv6()
 }
 
 type field int32
@@ -436,51 +436,51 @@ func sectionForField(t field) field {
 	return Invalid
 }
 
-func getField(s stringSpan) field {
+func (s stringSpan) field() field {
 	switch {
-	case isCaselessSame(s, &[]byte("PrivateKey\x00")[0]):
+	case s.isCaselessSame(&[]byte("PrivateKey\x00")[0]):
 		return PrivateKey
-	case isCaselessSame(s, &[]byte("ListenPort\x00")[0]):
+	case s.isCaselessSame(&[]byte("ListenPort\x00")[0]):
 		return ListenPort
-	case isCaselessSame(s, &[]byte("Address\x00")[0]):
+	case s.isCaselessSame(&[]byte("Address\x00")[0]):
 		return Address
-	case isCaselessSame(s, &[]byte("DNS\x00")[0]):
+	case s.isCaselessSame(&[]byte("DNS\x00")[0]):
 		return DNS
-	case isCaselessSame(s, &[]byte("MTU\x00")[0]):
+	case s.isCaselessSame(&[]byte("MTU\x00")[0]):
 		return MTU
-	case isCaselessSame(s, &[]byte("PublicKey\x00")[0]):
+	case s.isCaselessSame(&[]byte("PublicKey\x00")[0]):
 		return PublicKey
-	case isCaselessSame(s, &[]byte("PresharedKey\x00")[0]):
+	case s.isCaselessSame(&[]byte("PresharedKey\x00")[0]):
 		return PresharedKey
-	case isCaselessSame(s, &[]byte("AllowedIPs\x00")[0]):
+	case s.isCaselessSame(&[]byte("AllowedIPs\x00")[0]):
 		return AllowedIPs
-	case isCaselessSame(s, &[]byte("Endpoint\x00")[0]):
+	case s.isCaselessSame(&[]byte("Endpoint\x00")[0]):
 		return Endpoint
-	case isCaselessSame(s, &[]byte("PersistentKeepalive\x00")[0]):
+	case s.isCaselessSame(&[]byte("PersistentKeepalive\x00")[0]):
 		return PersistentKeepalive
-	case isCaselessSame(s, &[]byte("FwMark\x00")[0]):
+	case s.isCaselessSame(&[]byte("FwMark\x00")[0]):
 		return FwMark
-	case isCaselessSame(s, &[]byte("Table\x00")[0]):
+	case s.isCaselessSame(&[]byte("Table\x00")[0]):
 		return Table
-	case isCaselessSame(s, &[]byte("PreUp\x00")[0]):
+	case s.isCaselessSame(&[]byte("PreUp\x00")[0]):
 		return PreUp
-	case isCaselessSame(s, &[]byte("PostUp\x00")[0]):
+	case s.isCaselessSame(&[]byte("PostUp\x00")[0]):
 		return PostUp
-	case isCaselessSame(s, &[]byte("PreDown\x00")[0]):
+	case s.isCaselessSame(&[]byte("PreDown\x00")[0]):
 		return PreDown
-	case isCaselessSame(s, &[]byte("PostDown\x00")[0]):
+	case s.isCaselessSame(&[]byte("PostDown\x00")[0]):
 		return PostDown
-	case isCaselessSame(s, &[]byte("SaveConfig\x00")[0]):
+	case s.isCaselessSame(&[]byte("SaveConfig\x00")[0]):
 		return SaveConfig
 	}
 	return Invalid
 }
 
-func getSectionType(s stringSpan) field {
+func (s stringSpan) sectionType() field {
 	switch {
-	case isCaselessSame(s, &[]byte("[Peer]\x00")[0]):
+	case s.isCaselessSame(&[]byte("[Peer]\x00")[0]):
 		return PeerSection
-	case isCaselessSame(s, &[]byte("[Interface]\x00")[0]):
+	case s.isCaselessSame(&[]byte("[Interface]\x00")[0]):
 		return InterfaceSection
 	}
 	return Invalid
@@ -498,15 +498,15 @@ func (a *highlightSpanArray) append(o *byte, s stringSpan, t highlight) {
 func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
 	switch section {
 	case DNS:
-		if isValidIPv4(s) || isValidIPv6(s) {
+		if s.isValidIPv4() || s.isValidIPv6() {
 			ret.append(parent.s, s, highlightIP)
-		} else if isValidHostname(s) {
+		} else if s.isValidHostname() {
 			ret.append(parent.s, s, highlightHost)
 		} else {
 			ret.append(parent.s, s, highlightError)
 		}
 	case Address, AllowedIPs:
-		if !isValidNetwork(s) {
+		if !s.isValidNetwork() {
 			ret.append(parent.s, s, highlightError)
 			break
 		}
@@ -560,27 +560,27 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
 	switch section {
 	case PrivateKey:
-		ret.append(parent.s, s, validateHighlight(isValidKey(s), highlightPrivateKey))
+		ret.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPrivateKey))
 	case PublicKey:
-		ret.append(parent.s, s, validateHighlight(isValidKey(s), highlightPublicKey))
+		ret.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPublicKey))
 	case PresharedKey:
-		ret.append(parent.s, s, validateHighlight(isValidKey(s), highlightPresharedKey))
+		ret.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPresharedKey))
 	case MTU:
-		ret.append(parent.s, s, validateHighlight(isValidMTU(s), highlightMTU))
+		ret.append(parent.s, s, validateHighlight(s.isValidMTU(), highlightMTU))
 	case SaveConfig:
-		ret.append(parent.s, s, validateHighlight(isValidSaveConfig(s), highlightSaveConfig))
+		ret.append(parent.s, s, validateHighlight(s.isValidSaveConfig(), highlightSaveConfig))
 	case FwMark:
-		ret.append(parent.s, s, validateHighlight(isValidFwMark(s), highlightFwMark))
+		ret.append(parent.s, s, validateHighlight(s.isValidFwMark(), highlightFwMark))
 	case Table:
-		ret.append(parent.s, s, validateHighlight(isValidTable(s), highlightTable))
+		ret.append(parent.s, s, validateHighlight(s.isValidTable(), highlightTable))
 	case PreUp, PostUp, PreDown, PostDown:
-		ret.append(parent.s, s, validateHighlight(isValidPrePostUpDown(s), highlightCmd))
+		ret.append(parent.s, s, validateHighlight(s.isValidPrePostUpDown(), highlightCmd))
 	case ListenPort:
-		ret.append(parent.s, s, validateHighlight(isValidPort(s), highlightPort))
+		ret.append(parent.s, s, validateHighlight(s.isValidPort(), highlightPort))
 	case PersistentKeepalive:
-		ret.append(parent.s, s, validateHighlight(isValidPersistentKeepAlive(s), highlightKeepalive))
+		ret.append(parent.s, s, validateHighlight(s.isValidPersistentKeepAlive(), highlightKeepalive))
 	case Endpoint:
-		if !isValidEndpoint(s) {
+		if !s.isValidEndpoint() {
 			ret.append(parent.s, s, highlightError)
 			break
 		}
@@ -632,7 +632,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				}
 			} else if state == onSection {
 				currentSpan.len = lenAtLastSpace
-				currentSection = getSectionType(currentSpan)
+				currentSection = currentSpan.sectionType()
 				ret.append(s.s, currentSpan, validateHighlight(currentSection != Invalid, highlightSection))
 			} else if state == onComment {
 				ret.append(s.s, currentSpan, highlightComment)
@@ -659,7 +659,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 			}
 		} else if *at(s.s, i) == '=' && state == onKey {
 			currentSpan.len = lenAtLastSpace
-			currentField = getField(currentSpan)
+			currentField = currentSpan.field()
 			section := sectionForField(currentField)
 			if section == Invalid || currentField == Invalid || section != currentSection {
 				ret.append(s.s, currentSpan, highlightError)
