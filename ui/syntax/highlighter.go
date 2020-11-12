@@ -389,86 +389,86 @@ func (s stringSpan) isValidNetwork() bool {
 type field int32
 
 const (
-	InterfaceSection field = iota
-	PrivateKey
-	ListenPort
-	Address
-	DNS
-	MTU
-	FwMark
-	Table
-	PreUp
-	PostUp
-	PreDown
-	PostDown
-	SaveConfig
-	PeerSection
-	PublicKey
-	PresharedKey
-	AllowedIPs
-	Endpoint
-	PersistentKeepalive
-	Invalid
+	fieldInterfaceSection field = iota
+	fieldPrivateKey
+	fieldListenPort
+	fieldAddress
+	fieldDNS
+	fieldMTU
+	fieldFwMark
+	fieldTable
+	fieldPreUp
+	fieldPostUp
+	fieldPreDown
+	fieldPostDown
+	fieldSaveConfig
+	fieldPeerSection
+	fieldPublicKey
+	fieldPresharedKey
+	fieldAllowedIPs
+	fieldEndpoint
+	fieldPersistentKeepalive
+	fieldInvalid
 )
 
 func sectionForField(t field) field {
-	if t > InterfaceSection && t < PeerSection {
-		return InterfaceSection
+	if t > fieldInterfaceSection && t < fieldPeerSection {
+		return fieldInterfaceSection
 	}
-	if t > PeerSection && t < Invalid {
-		return PeerSection
+	if t > fieldPeerSection && t < fieldInvalid {
+		return fieldPeerSection
 	}
-	return Invalid
+	return fieldInvalid
 }
 
 func (s stringSpan) field() field {
 	switch {
 	case s.isCaselessSame("PrivateKey"):
-		return PrivateKey
+		return fieldPrivateKey
 	case s.isCaselessSame("ListenPort"):
-		return ListenPort
+		return fieldListenPort
 	case s.isCaselessSame("Address"):
-		return Address
+		return fieldAddress
 	case s.isCaselessSame("DNS"):
-		return DNS
+		return fieldDNS
 	case s.isCaselessSame("MTU"):
-		return MTU
+		return fieldMTU
 	case s.isCaselessSame("PublicKey"):
-		return PublicKey
+		return fieldPublicKey
 	case s.isCaselessSame("PresharedKey"):
-		return PresharedKey
+		return fieldPresharedKey
 	case s.isCaselessSame("AllowedIPs"):
-		return AllowedIPs
+		return fieldAllowedIPs
 	case s.isCaselessSame("Endpoint"):
-		return Endpoint
+		return fieldEndpoint
 	case s.isCaselessSame("PersistentKeepalive"):
-		return PersistentKeepalive
+		return fieldPersistentKeepalive
 	case s.isCaselessSame("FwMark"):
-		return FwMark
+		return fieldFwMark
 	case s.isCaselessSame("Table"):
-		return Table
+		return fieldTable
 	case s.isCaselessSame("PreUp"):
-		return PreUp
+		return fieldPreUp
 	case s.isCaselessSame("PostUp"):
-		return PostUp
+		return fieldPostUp
 	case s.isCaselessSame("PreDown"):
-		return PreDown
+		return fieldPreDown
 	case s.isCaselessSame("PostDown"):
-		return PostDown
+		return fieldPostDown
 	case s.isCaselessSame("SaveConfig"):
-		return SaveConfig
+		return fieldSaveConfig
 	}
-	return Invalid
+	return fieldInvalid
 }
 
 func (s stringSpan) sectionType() field {
 	switch {
 	case s.isCaselessSame("[Peer]"):
-		return PeerSection
+		return fieldPeerSection
 	case s.isCaselessSame("[Interface]"):
-		return InterfaceSection
+		return fieldInterfaceSection
 	}
-	return Invalid
+	return fieldInvalid
 }
 
 type highlightSpanArray []highlightSpan
@@ -482,7 +482,7 @@ func (hsa *highlightSpanArray) append(o *byte, s stringSpan, t highlight) {
 
 func (hsa *highlightSpanArray) highlightMultivalueValue(parent stringSpan, s stringSpan, section field) {
 	switch section {
-	case DNS:
+	case fieldDNS:
 		if s.isValidIPv4() || s.isValidIPv6() {
 			hsa.append(parent.s, s, highlightIP)
 		} else if s.isValidHostname() {
@@ -490,7 +490,7 @@ func (hsa *highlightSpanArray) highlightMultivalueValue(parent stringSpan, s str
 		} else {
 			hsa.append(parent.s, s, highlightError)
 		}
-	case Address, AllowedIPs:
+	case fieldAddress, fieldAllowedIPs:
 		if !s.isValidNetwork() {
 			hsa.append(parent.s, s, highlightError)
 			break
@@ -544,27 +544,27 @@ func (hsa *highlightSpanArray) highlightMultivalue(parent stringSpan, s stringSp
 
 func (hsa *highlightSpanArray) highlightValue(parent stringSpan, s stringSpan, section field) {
 	switch section {
-	case PrivateKey:
+	case fieldPrivateKey:
 		hsa.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPrivateKey))
-	case PublicKey:
+	case fieldPublicKey:
 		hsa.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPublicKey))
-	case PresharedKey:
+	case fieldPresharedKey:
 		hsa.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPresharedKey))
-	case MTU:
+	case fieldMTU:
 		hsa.append(parent.s, s, validateHighlight(s.isValidMTU(), highlightMTU))
-	case SaveConfig:
+	case fieldSaveConfig:
 		hsa.append(parent.s, s, validateHighlight(s.isValidSaveConfig(), highlightSaveConfig))
-	case FwMark:
+	case fieldFwMark:
 		hsa.append(parent.s, s, validateHighlight(s.isValidFwMark(), highlightFwMark))
-	case Table:
+	case fieldTable:
 		hsa.append(parent.s, s, validateHighlight(s.isValidTable(), highlightTable))
-	case PreUp, PostUp, PreDown, PostDown:
+	case fieldPreUp, fieldPostUp, fieldPreDown, fieldPostDown:
 		hsa.append(parent.s, s, validateHighlight(s.isValidPrePostUpDown(), highlightCmd))
-	case ListenPort:
+	case fieldListenPort:
 		hsa.append(parent.s, s, validateHighlight(s.isValidPort(), highlightPort))
-	case PersistentKeepalive:
+	case fieldPersistentKeepalive:
 		hsa.append(parent.s, s, validateHighlight(s.isValidPersistentKeepAlive(), highlightKeepalive))
-	case Endpoint:
+	case fieldEndpoint:
 		if !s.isValidEndpoint() {
 			hsa.append(parent.s, s, highlightError)
 			break
@@ -579,7 +579,7 @@ func (hsa *highlightSpanArray) highlightValue(parent stringSpan, s stringSpan, s
 		hsa.append(parent.s, stringSpan{s.s, colon}, highlightHost)
 		hsa.append(parent.s, stringSpan{s.at(colon), 1}, highlightDelimiter)
 		hsa.append(parent.s, stringSpan{s.at(colon + 1), s.len - colon - 1}, highlightPort)
-	case Address, DNS, AllowedIPs:
+	case fieldAddress, fieldDNS, fieldAllowedIPs:
 		hsa.highlightMultivalue(parent, s, section)
 	default:
 		hsa.append(parent.s, s, highlightError)
@@ -590,8 +590,8 @@ func highlightConfig(config string) []highlightSpan {
 	var ret highlightSpanArray
 	s := stringSpan{&append([]byte(config), 0)[0], len(config)}
 	currentSpan := stringSpan{s.s, 0}
-	currentSection := Invalid
-	currentField := Invalid
+	currentSection := fieldInvalid
+	currentField := fieldInvalid
 	const (
 		onNone = iota
 		onKey
@@ -618,7 +618,7 @@ func highlightConfig(config string) []highlightSpan {
 			} else if state == onSection {
 				currentSpan.len = lenAtLastSpace
 				currentSection = currentSpan.sectionType()
-				ret.append(s.s, currentSpan, validateHighlight(currentSection != Invalid, highlightSection))
+				ret.append(s.s, currentSpan, validateHighlight(currentSection != fieldInvalid, highlightSection))
 			} else if state == onComment {
 				ret.append(s.s, currentSpan, highlightComment)
 			}
@@ -626,7 +626,7 @@ func highlightConfig(config string) []highlightSpan {
 				break
 			}
 			lenAtLastSpace = 0
-			currentField = Invalid
+			currentField = fieldInvalid
 			if *s.at(i) == '#' {
 				currentSpan = stringSpan{s.at(i), 1}
 				state = onComment
@@ -646,7 +646,7 @@ func highlightConfig(config string) []highlightSpan {
 			currentSpan.len = lenAtLastSpace
 			currentField = currentSpan.field()
 			section := sectionForField(currentField)
-			if section == Invalid || currentField == Invalid || section != currentSection {
+			if section == fieldInvalid || currentField == fieldInvalid || section != currentSection {
 				ret.append(s.s, currentSpan, highlightError)
 			} else {
 				ret.append(s.s, currentSpan, highlightField)
