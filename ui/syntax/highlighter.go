@@ -66,6 +66,13 @@ const (
 	highlightError                  = 17
 )
 
+func validateHighlight(isValid bool, t highlight) highlight {
+	if isValid {
+		return t
+	}
+	return highlightError
+}
+
 type highlightSpan struct {
 	t   highlight
 	s   int
@@ -606,132 +613,45 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 
 func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
 	switch section {
-	case (PrivateKey):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidKey(s) {
-					return (highlightPrivateKey)
-				} else {
-					return (highlightError)
-				}
-			}()))
+	case PrivateKey:
+		ret.append(parent.s, s, validateHighlight(isValidKey(s), highlightPrivateKey))
+	case PublicKey:
+		ret.append(parent.s, s, validateHighlight(isValidKey(s), highlightPublicKey))
+	case PresharedKey:
+		ret.append(parent.s, s, validateHighlight(isValidKey(s), highlightPresharedKey))
+	case MTU:
+		ret.append(parent.s, s, validateHighlight(isValidMTU(s), highlightMTU))
+	case SaveConfig:
+		ret.append(parent.s, s, validateHighlight(isValidSaveConfig(s), highlightSaveConfig))
+	case FwMark:
+		ret.append(parent.s, s, validateHighlight(isValidFwMark(s), highlightFwMark))
+	case Table:
+		ret.append(parent.s, s, validateHighlight(isValidTable(s), highlightTable))
+	case PreUp, PostUp, PreDown, PostDown:
+		ret.append(parent.s, s, validateHighlight(isValidPrePostUpDown(s), highlightCmd))
+	case ListenPort:
+		ret.append(parent.s, s, validateHighlight(isValidPort(s), highlightPort))
+	case PersistentKeepalive:
+		ret.append(parent.s, s, validateHighlight(isValidPersistentKeepAlive(s), highlightKeepalive))
+	case Endpoint:
+		var colon int
+		if !isValidEndpoint(s) {
+			ret.append(parent.s, s, highlightError)
+			break
 		}
-	case (PublicKey):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidKey(s) {
-					return (highlightPublicKey)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-	case (PresharedKey):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidKey(s) {
-					return (highlightPresharedKey)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-	case (MTU):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidMTU(s) {
-					return (highlightMTU)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-	case (SaveConfig):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidSaveConfig(s) {
-					return (highlightSaveConfig)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-	case (FwMark):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidFwMark(s) {
-					return (highlightFwMark)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-	case (Table):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidTable(s) {
-					return (highlightTable)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-	case (PreUp), (PostUp), (PreDown), (PostDown):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidPrePostUpDown(s) {
-					return (highlightCmd)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-
-	case (ListenPort):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidPort(s) {
-					return (highlightPort)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-	case (PersistentKeepalive):
-		{
-			ret.append(parent.s, s, highlight(func() int32 {
-				if isValidPersistentKeepAlive(s) {
-					return (highlightKeepalive)
-				} else {
-					return (highlightError)
-				}
-			}()))
-		}
-	case (Endpoint):
-		{
-			var colon int
-			if !isValidEndpoint(s) {
-				ret.append(parent.s, s, highlightError)
+		for colon = s.len; colon > 0; {
+			colon--
+			if (*at(s.s, colon)) == (':') {
 				break
 			}
-			for colon = s.len; colon > 0; {
-				colon--
-				if (*at(s.s, colon)) == (':') {
-					break
-				}
-			}
-			ret.append(parent.s, stringSpan{s.s, (colon)}, highlightHost)
-			ret.append(parent.s, stringSpan{at(s.s, colon), (1)}, highlightDelimiter)
-			ret.append(parent.s, stringSpan{at(s.s, colon+1), (s.len) - colon - (1)}, highlightPort)
 		}
-	case (Address), (DNS), (AllowedIPs):
-		{
-			highlightMultivalue(ret, stringSpan(parent), stringSpan(s), section)
-		}
+		ret.append(parent.s, stringSpan{s.s, (colon)}, highlightHost)
+		ret.append(parent.s, stringSpan{at(s.s, colon), (1)}, highlightDelimiter)
+		ret.append(parent.s, stringSpan{at(s.s, colon+1), (s.len) - colon - (1)}, highlightPort)
+	case Address, DNS, AllowedIPs:
+		highlightMultivalue(ret, stringSpan(parent), stringSpan(s), section)
 	default:
-		{
-			ret.append(parent.s, s, highlightError)
-		}
+		ret.append(parent.s, s, highlightError)
 	}
 }
 
@@ -772,13 +692,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				} else if (state) == (OnSection) {
 					currentSpan.len = lenAtLastSpace
 					currentSection = getSectionType(currentSpan)
-					ret.append(s.s, currentSpan, highlight(func() highlight {
-						if (currentSection) == (Invalid) {
-							return (highlightError)
-						} else {
-							return (highlightSection)
-						}
-					}()))
+					ret.append(s.s, currentSpan, validateHighlight(currentSection != Invalid, highlightSection))
 				} else if (state) == (OnComment) {
 					ret.append(s.s, currentSpan, highlightComment)
 				}
