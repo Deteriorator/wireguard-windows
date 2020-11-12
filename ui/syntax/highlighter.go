@@ -25,9 +25,6 @@ const (
 	highlightKeepalive
 	highlightComment
 	highlightDelimiter
-	highlightTable
-	highlightFwMark
-	highlightSaveConfig
 	highlightCmd
 	highlightError
 )
@@ -265,31 +262,6 @@ func (s stringSpan) isValidPersistentKeepAlive() bool {
 	return s.isValidUint(false, 0, 65535)
 }
 
-func (s stringSpan) isValidFwMark() bool {
-	if s.isSame("off") {
-		return true
-	}
-	return s.isValidUint(true, 0, 4294967295)
-}
-
-// This pretty much invalidates the other checks, but rt_names.c's fread_id_name does no validation aside from this.
-func (s stringSpan) isValidTable() bool {
-	if s.isSame("auto") {
-		return true
-	}
-	if s.isSame("off") {
-		return true
-	}
-	if s.len < 512 {
-		return true
-	}
-	return s.isValidUint(false, 0, 4294967295)
-}
-
-func (s stringSpan) isValidSaveConfig() bool {
-	return s.isSame("true") || s.isSame("false")
-}
-
 // It's probably not worthwhile to try to validate a bash expression. So instead we just demand non-zero length.
 func (s stringSpan) isValidPrePostUpDown() bool {
 	return s.len != 0
@@ -387,13 +359,10 @@ const (
 	fieldAddress
 	fieldDNS
 	fieldMTU
-	fieldFwMark
-	fieldTable
 	fieldPreUp
 	fieldPostUp
 	fieldPreDown
 	fieldPostDown
-	fieldSaveConfig
 	fieldPeerSection
 	fieldPublicKey
 	fieldPresharedKey
@@ -435,10 +404,8 @@ func (s stringSpan) field() field {
 		return fieldEndpoint
 	case s.isCaselessSame("PersistentKeepalive"):
 		return fieldPersistentKeepalive
-	case s.isCaselessSame("FwMark"):
-		return fieldFwMark
-	case s.isCaselessSame("Table"):
-		return fieldTable
+	}
+	/* TODO: uncomment this once we support these in the client
 	case s.isCaselessSame("PreUp"):
 		return fieldPreUp
 	case s.isCaselessSame("PostUp"):
@@ -447,9 +414,7 @@ func (s stringSpan) field() field {
 		return fieldPreDown
 	case s.isCaselessSame("PostDown"):
 		return fieldPostDown
-	case s.isCaselessSame("SaveConfig"):
-		return fieldSaveConfig
-	}
+	*/
 	return fieldInvalid
 }
 
@@ -544,12 +509,6 @@ func (hsa *highlightSpanArray) highlightValue(parent stringSpan, s stringSpan, s
 		hsa.append(parent.s, s, validateHighlight(s.isValidKey(), highlightPresharedKey))
 	case fieldMTU:
 		hsa.append(parent.s, s, validateHighlight(s.isValidMTU(), highlightMTU))
-	case fieldSaveConfig:
-		hsa.append(parent.s, s, validateHighlight(s.isValidSaveConfig(), highlightSaveConfig))
-	case fieldFwMark:
-		hsa.append(parent.s, s, validateHighlight(s.isValidFwMark(), highlightFwMark))
-	case fieldTable:
-		hsa.append(parent.s, s, validateHighlight(s.isValidTable(), highlightTable))
 	case fieldPreUp, fieldPostUp, fieldPreDown, fieldPostDown:
 		hsa.append(parent.s, s, validateHighlight(s.isValidPrePostUpDown(), highlightCmd))
 	case fieldListenPort:

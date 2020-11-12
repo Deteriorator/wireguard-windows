@@ -103,9 +103,6 @@ var stylemap = map[highlight]spanStyle{
 	highlightKeepalive:    spanStyle{color: win.RGB(0x1C, 0x00, 0xCF)},
 	highlightComment:      spanStyle{color: win.RGB(0x53, 0x65, 0x79), effects: win.CFE_ITALIC},
 	highlightDelimiter:    spanStyle{color: win.RGB(0x00, 0x00, 0x00)},
-	highlightTable:        spanStyle{color: win.RGB(0x1C, 0x00, 0xCF)},
-	highlightFwMark:       spanStyle{color: win.RGB(0x1C, 0x00, 0xCF)},
-	highlightSaveConfig:   spanStyle{color: win.RGB(0x81, 0x5F, 0x03)},
 	highlightCmd:          spanStyle{color: win.RGB(0x63, 0x75, 0x89)},
 	highlightError:        spanStyle{color: win.RGB(0xC4, 0x1A, 0x16), effects: win.CFE_UNDERLINE},
 }
