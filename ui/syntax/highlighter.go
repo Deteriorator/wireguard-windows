@@ -524,26 +524,13 @@ func getSectionType(s stringSpan) field {
 	return Invalid
 }
 
-type highlightSpanArray struct {
-	spans *highlightSpan
-	len   int
-	cap   int
-}
+type highlightSpanArray []highlightSpan
 
-func addToArray(a *highlightSpanArray, hs *highlightSpan) {
-	slice := *(*[]highlightSpan)(unsafe.Pointer(a))
-	slice = append(slice, *hs)
-	a.spans = &slice[0]
-	a.len = len(slice)
-	a.cap = cap(slice)
-}
-
-func appendHighlightSpan(a *highlightSpanArray, o *byte, s stringSpan, t highlight) bool {
+func (a *highlightSpanArray) append(o *byte, s stringSpan, t highlight) {
 	if s.len == 0 {
-		return true
+		return
 	}
-	addToArray(a, &highlightSpan{t, int((uintptr(unsafe.Pointer(s.s))) - (uintptr(unsafe.Pointer(o)))), (s.len)})
-	return true
+	*a = append(*a, highlightSpan{t, int((uintptr(unsafe.Pointer(s.s))) - (uintptr(unsafe.Pointer(o)))), (s.len)})
 }
 
 func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, section field) {
@@ -551,18 +538,18 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 	case (DNS):
 		{
 			if isValidIPv4(s) || isValidIPv6(s) {
-				appendHighlightSpan(ret, parent.s, s, highlightIP)
+				ret.append(parent.s, s, highlightIP)
 			} else if isValidHostname(s) {
-				appendHighlightSpan(ret, parent.s, s, highlightHost)
+				ret.append(parent.s, s, highlightHost)
 			} else {
-				appendHighlightSpan(ret, parent.s, s, highlightError)
+				ret.append(parent.s, s, highlightError)
 			}
 		}
 	case (Address), (AllowedIPs):
 		{
 			var slash int
 			if !isValidNetwork(s) {
-				appendHighlightSpan(ret, parent.s, s, highlightError)
+				ret.append(parent.s, s, highlightError)
 				break
 			}
 			for slash = (0); slash < (s.len); slash++ {
@@ -571,16 +558,16 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 				}
 			}
 			if slash == (s.len) {
-				appendHighlightSpan(ret, parent.s, s, highlightIP)
+				ret.append(parent.s, s, highlightIP)
 			} else {
-				appendHighlightSpan(ret, parent.s, stringSpan{s.s, (slash)}, highlightIP)
-				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, slash), (1)}, highlightDelimiter)
-				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, slash+1), (s.len) - slash - (1)}, highlightCidr)
+				ret.append(parent.s, stringSpan{s.s, (slash)}, highlightIP)
+				ret.append(parent.s, stringSpan{at(s.s, slash), (1)}, highlightDelimiter)
+				ret.append(parent.s, stringSpan{at(s.s, slash+1), (s.len) - slash - (1)}, highlightCidr)
 			}
 		}
 	default:
 		{
-			appendHighlightSpan(ret, parent.s, s, highlightError)
+			ret.append(parent.s, s, highlightError)
 		}
 	}
 }
@@ -594,7 +581,7 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 			if (*at(s.s, i)) == (',') {
 				currentSpan.len = lenAtLastSpace
 				highlightMultivalueValue(ret, stringSpan(parent), stringSpan(currentSpan), section)
-				appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, i), (1)}, highlightDelimiter)
+				ret.append(parent.s, stringSpan{at(s.s, i), (1)}, highlightDelimiter)
 				lenAtLastSpace = (0)
 				currentSpan = stringSpan{at(s.s, i+1), (0)}
 			} else if (*at(s.s, i)) == (' ') || (*at(s.s, i)) == ('\t') {
@@ -612,14 +599,8 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 	currentSpan.len = lenAtLastSpace
 	if (currentSpan.len) != 0 {
 		highlightMultivalueValue(ret, stringSpan(parent), stringSpan(currentSpan), section)
-	} else if ((*((*highlightSpan)(func() unsafe.Pointer {
-		tempVar := (*ret).spans
-		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)((((*ret).len)-(1)))*unsafe.Sizeof(*tempVar))
-	}()))).t) == (highlightDelimiter) {
-		(*((*highlightSpan)(func() unsafe.Pointer {
-			tempVar := (*ret).spans
-			return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)((((*ret).len)-(1)))*unsafe.Sizeof(*tempVar))
-		}()))).t = highlightError
+	} else if (*ret)[len(*ret)-1].t == highlightDelimiter {
+		(*ret)[len(*ret)-1].t = highlightError
 	}
 }
 
@@ -627,7 +608,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	switch section {
 	case (PrivateKey):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidKey(s) {
 					return (highlightPrivateKey)
 				} else {
@@ -637,7 +618,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	case (PublicKey):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidKey(s) {
 					return (highlightPublicKey)
 				} else {
@@ -647,7 +628,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	case (PresharedKey):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidKey(s) {
 					return (highlightPresharedKey)
 				} else {
@@ -657,7 +638,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	case (MTU):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidMTU(s) {
 					return (highlightMTU)
 				} else {
@@ -667,7 +648,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	case (SaveConfig):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidSaveConfig(s) {
 					return (highlightSaveConfig)
 				} else {
@@ -677,7 +658,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	case (FwMark):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidFwMark(s) {
 					return (highlightFwMark)
 				} else {
@@ -687,7 +668,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	case (Table):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidTable(s) {
 					return (highlightTable)
 				} else {
@@ -697,7 +678,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	case (PreUp), (PostUp), (PreDown), (PostDown):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidPrePostUpDown(s) {
 					return (highlightCmd)
 				} else {
@@ -708,7 +689,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 
 	case (ListenPort):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidPort(s) {
 					return (highlightPort)
 				} else {
@@ -718,7 +699,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	case (PersistentKeepalive):
 		{
-			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
+			ret.append(parent.s, s, highlight(func() int32 {
 				if isValidPersistentKeepAlive(s) {
 					return (highlightKeepalive)
 				} else {
@@ -730,7 +711,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		{
 			var colon int
 			if !isValidEndpoint(s) {
-				appendHighlightSpan(ret, parent.s, s, highlightError)
+				ret.append(parent.s, s, highlightError)
 				break
 			}
 			for colon = s.len; colon > 0; {
@@ -739,9 +720,9 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 					break
 				}
 			}
-			appendHighlightSpan(ret, parent.s, stringSpan{s.s, (colon)}, highlightHost)
-			appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, colon), (1)}, highlightDelimiter)
-			appendHighlightSpan(ret, parent.s, stringSpan{at(s.s, colon+1), (s.len) - colon - (1)}, highlightPort)
+			ret.append(parent.s, stringSpan{s.s, (colon)}, highlightHost)
+			ret.append(parent.s, stringSpan{at(s.s, colon), (1)}, highlightDelimiter)
+			ret.append(parent.s, stringSpan{at(s.s, colon+1), (s.len) - colon - (1)}, highlightPort)
 		}
 	case (Address), (DNS), (AllowedIPs):
 		{
@@ -749,7 +730,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 		}
 	default:
 		{
-			appendHighlightSpan(ret, parent.s, s, highlightError)
+			ret.append(parent.s, s, highlightError)
 		}
 	}
 }
@@ -779,19 +760,19 @@ func highlightConfigInt(config *byte) []highlightSpan {
 			if i == (s.len) || (*at(s.s, i)) == ('\n') || (state) != (OnComment) && (*at(s.s, i)) == ('#') {
 				if (state) == (OnKey) {
 					currentSpan.len = lenAtLastSpace
-					appendHighlightSpan(&ret, s.s, currentSpan, highlightError)
+					ret.append(s.s, currentSpan, highlightError)
 				} else if (state) == (OnValue) {
 					if (currentSpan.len) != 0 {
-						appendHighlightSpan(&ret, s.s, stringSpan{at(s.s, equalsLocation), (1)}, highlightDelimiter)
+						ret.append(s.s, stringSpan{at(s.s, equalsLocation), (1)}, highlightDelimiter)
 						currentSpan.len = lenAtLastSpace
 						highlightValue(&ret, stringSpan(s), stringSpan(currentSpan), currentField)
 					} else {
-						appendHighlightSpan(&ret, s.s, stringSpan{at(s.s, equalsLocation), (1)}, highlightError)
+						ret.append(s.s, stringSpan{at(s.s, equalsLocation), (1)}, highlightError)
 					}
 				} else if (state) == (OnSection) {
 					currentSpan.len = lenAtLastSpace
 					currentSection = getSectionType(currentSpan)
-					appendHighlightSpan(&ret, s.s, currentSpan, highlight(func() highlight {
+					ret.append(s.s, currentSpan, highlight(func() highlight {
 						if (currentSection) == (Invalid) {
 							return (highlightError)
 						} else {
@@ -799,7 +780,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 						}
 					}()))
 				} else if (state) == (OnComment) {
-					appendHighlightSpan(&ret, s.s, currentSpan, highlightComment)
+					ret.append(s.s, currentSpan, highlightComment)
 				}
 				if i == (s.len) {
 					break
@@ -826,9 +807,9 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				currentField = getField(currentSpan)
 				var section = sectionForField(currentField)
 				if (section) == (Invalid) || (currentField) == (Invalid) || (section) != (currentSection) {
-					appendHighlightSpan(&ret, s.s, currentSpan, highlightError)
+					ret.append(s.s, currentSpan, highlightError)
 				} else {
-					appendHighlightSpan(&ret, s.s, currentSpan, highlightField)
+					ret.append(s.s, currentSpan, highlightField)
 				}
 				equalsLocation = i
 				currentSpan = stringSpan{at(s.s, i+1), (0)}
