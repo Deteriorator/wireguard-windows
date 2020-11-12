@@ -144,12 +144,12 @@ func isCaselessSame(s stringSpan, c *byte) bool {
 	return true
 }
 
-func isValidKey(s stringSpan) int8 {
+func isValidKey(s stringSpan) bool {
 	if uint32(s.len) != uint32(uint32(int32(44))) || int32(*((*byte)(func() unsafe.Pointer {
 		tempVar := s.s
 		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(43))*unsafe.Sizeof(*tempVar))
 	}()))) != int32('=') {
-		return int8(int8(int32(0)))
+		return false
 	}
 	{
 		var i = uint32(int32(0))
@@ -167,7 +167,7 @@ func isValidKey(s stringSpan) int8 {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 			}()))) != int32('+') {
-				return int8(int8(int32(0)))
+				return false
 			}
 		}
 	}
@@ -180,29 +180,29 @@ func isValidKey(s stringSpan) int8 {
 		}
 	default:
 		{
-			return int8(int8(int32(0)))
+			return false
 		}
 	}
-	return int8(int8(int32(1)))
+	return true
 }
 
-func isValidHostname(s stringSpan) int8 {
+func isValidHostname(s stringSpan) bool {
 	var num_digit = uint32(int32(0))
 	var num_entity = uint32(s.len)
 	if uint32(s.len) > uint32(uint32(int32(63))) || cNotUint32(uint32(s.len)) {
-		return int8(int8(int32(0)))
+		return false
 	}
 	if int32(*s.s) == int32('-') || int32(*((*byte)(func() unsafe.Pointer {
 		tempVar := s.s
 		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
 	}()))) == int32('-') {
-		return int8(int8(int32(0)))
+		return false
 	}
 	if int32(*s.s) == int32('.') || int32(*((*byte)(func() unsafe.Pointer {
 		tempVar := s.s
 		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
 	}()))) == int32('.') {
-		return int8(int8(int32(0)))
+		return false
 	}
 	{
 		var i = uint32(int32(0))
@@ -228,7 +228,7 @@ func isValidHostname(s stringSpan) int8 {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 			}()))) != int32('-') {
-				return int8(int8(int32(0)))
+				return false
 			}
 			if uint32(i) != 0 && int32(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
@@ -237,20 +237,14 @@ func isValidHostname(s stringSpan) int8 {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i-uint32(uint32(int32(1))))))*unsafe.Sizeof(*tempVar))
 			}()))) == int32('.') {
-				return int8(int8(int32(0)))
+				return false
 			}
 		}
 	}
-	return int8(int8(func(val bool) int32 {
-		if val {
-			return 1
-		} else {
-			return 0
-		}
-	}(num_digit != num_entity)))
+	return num_digit != num_entity
 }
 
-func isValidIPv4(s stringSpan) int8 {
+func isValidIPv4(s stringSpan) bool {
 	{
 		var j uint32
 		var i = uint32(int32(0))
@@ -270,28 +264,28 @@ func isValidIPv4(s stringSpan) int8 {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
 			}()))) == int32('0') || val > uint32(uint32(uint32(int32(255)))) {
-				return int8(int8(int32(0)))
+				return false
 			}
 			if pos+j == uint32(s.len) && i == uint32(uint32(int32(3))) {
-				return int8(int8(int32(1)))
+				return true
 			}
 			if int32(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
 			}()))) != int32('.') {
-				return int8(int8(int32(0)))
+				return false
 			}
 			pos += j + uint32(uint32(int32(1)))
 		}
 	}
-	return int8(int8(int32(0)))
+	return false
 }
 
-func isValidIPv6(s stringSpan) int8 {
+func isValidIPv6(s stringSpan) bool {
 	var pos = uint32(int32(0))
 	var seenColon = int8(int8(int32(0)))
 	if uint32(s.len) < uint32(uint32(int32(2))) {
-		return int8(int8(int32(0)))
+		return false
 	}
 	if int32(*((*byte)(func() unsafe.Pointer {
 		tempVar := s.s
@@ -303,7 +297,7 @@ func isValidIPv6(s stringSpan) int8 {
 			return pos
 		}())))*unsafe.Sizeof(*tempVar))
 	}()))) != int32(':') {
-		return int8(int8(int32(0)))
+		return false
 	}
 	if int32(*((*byte)(func() unsafe.Pointer {
 		tempVar := s.s
@@ -312,7 +306,7 @@ func isValidIPv6(s stringSpan) int8 {
 		tempVar := s.s
 		return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(uint32(s.len)-uint32(uint32(int32(2))))))*unsafe.Sizeof(*tempVar))
 	}()))) != int32(':') {
-		return int8(int8(int32(0)))
+		return false
 	}
 	{
 		var j uint32
@@ -330,7 +324,7 @@ func isValidIPv6(s stringSpan) int8 {
 					break
 				}
 				if i == uint32(uint32(int32(7))) {
-					return int8(int8(int32(0)))
+					return false
 				}
 				continue
 			}
@@ -344,13 +338,13 @@ func isValidIPv6(s stringSpan) int8 {
 				break
 			}
 			if j == uint32(uint32(int32(0))) {
-				return int8(int8(int32(0)))
+				return false
 			}
 			if pos+j == uint32(s.len) && (int32(int8(seenColon)) != 0 || i == uint32(uint32(int32(7)))) {
 				break
 			}
 			if i == uint32(uint32(int32(7))) {
-				return int8(int8(int32(0)))
+				return false
 			}
 			if int32(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
@@ -360,7 +354,7 @@ func isValidIPv6(s stringSpan) int8 {
 					tempVar := s.s
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
 				}()))) != int32('.') || i < uint32(uint32(int32(6))) && cNotInt8(seenColon) {
-					return int8(int8(int32(0)))
+					return false
 				}
 				return isValidIPv4(stringSpan{(*byte)(func() unsafe.Pointer {
 					tempVar := s.s
@@ -370,7 +364,7 @@ func isValidIPv6(s stringSpan) int8 {
 			pos += j + uint32(uint32(int32(1)))
 		}
 	}
-	return int8(int8(int32(1)))
+	return true
 }
 
 /* Bound this around 32 bits, so that we don't have to write overflow logic. */
@@ -543,7 +537,7 @@ func isValidEndpoint(s stringSpan) int8 {
 						return int8(int8(int32(0)))
 					}
 					seenScope = int8(int8(int32(1)))
-					if cNotInt8(isValidIPv6(hostspan)) {
+					if !isValidIPv6(hostspan) {
 						return int8(int8(int32(0)))
 					}
 					hostspan = stringSpan{(*byte)(func() unsafe.Pointer {
@@ -561,7 +555,7 @@ func isValidEndpoint(s stringSpan) int8 {
 						if cNotInt8(isValidScope(hostspan)) {
 							return int8(int8(int32(0)))
 						}
-					} else if cNotInt8(isValidIPv6(hostspan)) {
+					} else if !isValidIPv6(hostspan) {
 						return int8(int8(int32(0)))
 					}
 					if i == uint32(s.len)-uint32(uint32(int32(1))) || int32(*((*byte)(func() unsafe.Pointer {
@@ -605,7 +599,7 @@ func isValidEndpoint(s stringSpan) int8 {
 					} else {
 						return 0
 					}
-				}(int32(int8(isValidPort(port))) != 0 && (int32(int8(isValidIPv4(host))) != 0 || int32(int8(isValidHostname(host))) != 0))))
+				}(int32(int8(isValidPort(port))) != 0 && (isValidIPv4(host) || isValidHostname(host)))))
 			}
 		}
 	}
@@ -647,7 +641,7 @@ func isValidNetwork(s stringSpan) int8 {
 						}()))) - int32('0'))))
 					}
 				}
-				if int8(isValidIPv4(ip)) != 0 {
+				if isValidIPv4(ip) {
 					return int8(int8(func(val bool) int32 {
 						if val {
 							return 1
@@ -655,7 +649,7 @@ func isValidNetwork(s stringSpan) int8 {
 							return 0
 						}
 					}(int32(uint16(uint16(cidrval))) <= int32(32))))
-				} else if int8(isValidIPv6(ip)) != 0 {
+				} else if isValidIPv6(ip) {
 					return int8(int8(func(val bool) int32 {
 						if val {
 							return 1
@@ -674,7 +668,7 @@ func isValidNetwork(s stringSpan) int8 {
 		} else {
 			return 0
 		}
-	}(int32(int8(isValidIPv4(s))) != 0 || int32(int8(isValidIPv6(s))) != 0)))
+	}(isValidIPv4(s) || isValidIPv6(s))))
 }
 
 type field int32
@@ -889,9 +883,9 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 	switch uint32(int32(section)) {
 	case uint32(DNS):
 		{
-			if int32(int8(isValidIPv4(s))) != 0 || int32(int8(isValidIPv6(s))) != 0 {
+			if isValidIPv4(s) || isValidIPv6(s) {
 				appendHighlightSpan(ret, parent.s, s, highlightIP)
-			} else if int8(isValidHostname(s)) != 0 {
+			} else if isValidHostname(s) {
 				appendHighlightSpan(ret, parent.s, s, highlightHost)
 			} else {
 				appendHighlightSpan(ret, parent.s, s, highlightError)
@@ -1006,7 +1000,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(PrivateKey):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidKey(s))) != 0 {
+				if isValidKey(s) {
 					return int32(highlightPrivateKey)
 				} else {
 					return int32(highlightError)
@@ -1016,7 +1010,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(PublicKey):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidKey(s))) != 0 {
+				if isValidKey(s) {
 					return int32(highlightPublicKey)
 				} else {
 					return int32(highlightError)
@@ -1026,7 +1020,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(PresharedKey):
 		{
 			appendHighlightSpan(ret, parent.s, s, highlight(func() int32 {
-				if int32(int8(isValidKey(s))) != 0 {
+				if isValidKey(s) {
 					return int32(highlightPresharedKey)
 				} else {
 					return int32(highlightError)
