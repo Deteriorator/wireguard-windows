@@ -39,28 +39,28 @@ func cMemcmp(src1, src2 unsafe.Pointer, n int32) int32 {
 	return int32(bytes.Compare(b1, b2))
 }
 
-func cNotInt32(x int32) int32 {
+func cNotInt32(x int32) bool {
 	if x == 0 {
-		return 1
+		return true
 	}
 
-	return 0
+	return false
 }
 
-func cNotUint32(x uint32) uint32 {
+func cNotUint32(x uint32) bool {
 	if x == 0 {
-		return 1
+		return true
 	}
 
-	return 0
+	return false
 }
 
-func cNotInt8(x int8) int8 {
+func cNotInt8(x int8) bool {
 	if x == 0 {
-		return 1
+		return true
 	}
 
-	return 0
+	return false
 }
 
 type highlight int32
@@ -127,12 +127,12 @@ func isAlphabet(c byte) int8 {
 	}(int32(c)|int32(32) >= int32('a') && int32(c)|int32(32) <= int32('z'))))
 }
 
-func isSame(s stringSpan, c *byte) int8 {
+func isSame(s stringSpan, c *byte) bool {
 	var len = uint32(uint32(cStrlen(c)))
 	if len != uint32(s.len) {
-		return int8(int8(int32(0)))
+		return false
 	}
-	return int8(int8(cNotInt32(cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), int32(uint32(uint32(len)))))))
+	return cNotInt32(cMemcmp(unsafe.Pointer(s.s), unsafe.Pointer(c), int32(uint32(uint32(len)))))
 }
 
 func isCaselessSame(s stringSpan, c *byte) int8 {
@@ -172,13 +172,13 @@ func isValidKey(s stringSpan) int8 {
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(uint32(int32(42))); i++ {
-			if int8(cNotInt8(isDecimal(*((*byte)(func() unsafe.Pointer {
+			if cNotInt8(isDecimal(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))))) != 0 && int8(cNotInt8(isAlphabet(*((*byte)(func() unsafe.Pointer {
+			}())))) && cNotInt8(isAlphabet(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))))) != 0 && int32(*((*byte)(func() unsafe.Pointer {
+			}())))) && int32(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 			}()))) != int32('/') && int32(*((*byte)(func() unsafe.Pointer {
@@ -207,7 +207,7 @@ func isValidKey(s stringSpan) int8 {
 func isValidHostname(s stringSpan) int8 {
 	var num_digit = uint32(int32(0))
 	var num_entity = uint32(s.len)
-	if uint32(s.len) > uint32(uint32(int32(63))) || uint32(cNotUint32(uint32(s.len))) != 0 {
+	if uint32(s.len) > uint32(uint32(int32(63))) || cNotUint32(uint32(s.len)) {
 		return int8(int8(int32(0)))
 	}
 	if int32(*s.s) == int32('-') || int32(*((*byte)(func() unsafe.Pointer {
@@ -239,10 +239,10 @@ func isValidHostname(s stringSpan) int8 {
 				num_entity -= 1
 				continue
 			}
-			if int8(cNotInt8(isAlphabet(*((*byte)(func() unsafe.Pointer {
+			if cNotInt8(isAlphabet(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))))) != 0 && int32(*((*byte)(func() unsafe.Pointer {
+			}())))) && int32(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 			}()))) != int32('-') {
@@ -339,7 +339,7 @@ func isValidIPv6(s stringSpan) int8 {
 			if int32(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos)))*unsafe.Sizeof(*tempVar))
-			}()))) == int32(':') && int8(cNotInt8(seenColon)) != 0 {
+			}()))) == int32(':') && cNotInt8(seenColon) {
 				seenColon = int8(int8(int32(1)))
 				if func() uint32 {
 					pos += 1
@@ -377,7 +377,7 @@ func isValidIPv6(s stringSpan) int8 {
 				if int32(*((*byte)(func() unsafe.Pointer {
 					tempVar := s.s
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(pos+j)))*unsafe.Sizeof(*tempVar))
-				}()))) != int32('.') || i < uint32(uint32(int32(6))) && int8(cNotInt8(seenColon)) != 0 {
+				}()))) != int32('.') || i < uint32(uint32(int32(6))) && cNotInt8(seenColon) {
 					return int8(int8(int32(0)))
 				}
 				return isValidIPv4(stringSpan{(*byte)(func() unsafe.Pointer {
@@ -394,7 +394,7 @@ func isValidIPv6(s stringSpan) int8 {
 /* Bound this around 32 bits, so that we don't have to write overflow logic. */
 func isValidUint(s stringSpan, support_hex int8, min uint64, max uint64) int8 {
 	var val = uint64(int32(0))
-	if uint32(s.len) > uint32(uint32(int32(10))) || uint32(cNotUint32(uint32(s.len))) != 0 {
+	if uint32(s.len) > uint32(uint32(int32(10))) || cNotUint32(uint32(s.len)) {
 		return int8(int8(int32(0)))
 	}
 	if int32(int8(support_hex)) != 0 && uint32(s.len) > uint32(uint32(int32(2))) && int32(*s.s) == int32('0') && int32(*((*byte)(func() unsafe.Pointer {
@@ -429,10 +429,10 @@ func isValidUint(s stringSpan, support_hex int8, min uint64, max uint64) int8 {
 		{
 			var i = uint32(int32(0))
 			for ; i < uint32(s.len); i++ {
-				if int8(cNotInt8(isDecimal(*((*byte)(func() unsafe.Pointer {
+				if cNotInt8(isDecimal(*((*byte)(func() unsafe.Pointer {
 					tempVar := s.s
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))))) != 0 {
+				}())))) {
 					return int8(int8(int32(0)))
 				}
 				val = uint64(uint64(uint32(int32(10))*uint32(uint64(val)) + uint32(*((*byte)(func() unsafe.Pointer {
@@ -460,14 +460,14 @@ func isValidMTU(s stringSpan) int8 {
 }
 
 func isValidPersistentKeepAlive(s stringSpan) int8 {
-	if int8(isSame(s, &[]byte("off\x00")[0])) != 0 {
+	if isSame(s, &[]byte("off\x00")[0]) {
 		return int8(int8(int32(1)))
 	}
 	return isValidUint(s, int8(int8(int32(0))), uint64(int32(0)), uint64(int32(65535)))
 }
 
 func isValidFwMark(s stringSpan) int8 {
-	if int8(isSame(s, &[]byte("off\x00")[0])) != 0 {
+	if isSame(s, &[]byte("off\x00")[0]) {
 		return int8(int8(int32(1)))
 	}
 	return isValidUint(s, int8(int8(int32(1))), uint64(int32(0)), uint64(4294967295))
@@ -476,10 +476,10 @@ func isValidFwMark(s stringSpan) int8 {
 /* This pretty much invalidates the other checks, but rt_names.c's
  * fread_id_name does no validation aside from this. */
 func isValidTable(s stringSpan) int8 {
-	if int8(isSame(s, &[]byte("auto\x00")[0])) != 0 {
+	if isSame(s, &[]byte("auto\x00")[0]) {
 		return int8(int8(int32(1)))
 	}
-	if int8(isSame(s, &[]byte("off\x00")[0])) != 0 {
+	if isSame(s, &[]byte("off\x00")[0]) {
 		return int8(int8(int32(1)))
 	}
 	if uint32(s.len) < uint32(uint32(int32(512))) {
@@ -495,7 +495,7 @@ func isValidSaveConfig(s stringSpan) int8 {
 		} else {
 			return 0
 		}
-	}(int32(int8(isSame(s, &[]byte("true\x00")[0]))) != 0 || int32(int8(isSame(s, &[]byte("false\x00")[0]))) != 0)))
+	}(isSame(s, &[]byte("true\x00")[0]) || isSame(s, &[]byte("false\x00")[0]))))
 }
 
 /* It's probably not worthwhile to try to validate a bash expression.
@@ -505,19 +505,19 @@ func isValidPrePostUpDown(s stringSpan) int8 {
 }
 
 func isValidScope(s stringSpan) int8 {
-	if uint32(s.len) > uint32(uint32(int32(64))) || uint32(cNotUint32(uint32(s.len))) != 0 {
+	if uint32(s.len) > uint32(uint32(int32(64))) || cNotUint32(uint32(s.len)) {
 		return int8(int8(int32(0)))
 	}
 	{
 		var i = uint32(int32(0))
 		for ; i < uint32(s.len); i++ {
-			if int8(cNotInt8(isAlphabet(*((*byte)(func() unsafe.Pointer {
+			if cNotInt8(isAlphabet(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))))) != 0 && int8(cNotInt8(isDecimal(*((*byte)(func() unsafe.Pointer {
+			}())))) && cNotInt8(isDecimal(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-			}()))))) != 0 && int32(*((*byte)(func() unsafe.Pointer {
+			}())))) && int32(*((*byte)(func() unsafe.Pointer {
 				tempVar := s.s
 				return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 			}()))) != int32('_') && int32(*((*byte)(func() unsafe.Pointer {
@@ -541,7 +541,7 @@ func isValidScope(s stringSpan) int8 {
 }
 
 func isValidEndpoint(s stringSpan) int8 {
-	if uint32(cNotUint32(uint32(s.len))) != 0 {
+	if cNotUint32(uint32(s.len)) {
 		return int8(int8(int32(0)))
 	}
 	if int32(*s.s) == int32('[') {
@@ -561,7 +561,7 @@ func isValidEndpoint(s stringSpan) int8 {
 						return int8(int8(int32(0)))
 					}
 					seenScope = int8(int8(int32(1)))
-					if int8(cNotInt8(isValidIPv6(hostspan))) != 0 {
+					if cNotInt8(isValidIPv6(hostspan)) {
 						return int8(int8(int32(0)))
 					}
 					hostspan = stringSpan{(*byte)(func() unsafe.Pointer {
@@ -576,10 +576,10 @@ func isValidEndpoint(s stringSpan) int8 {
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
 				}()))) == int32(']') {
 					if int8(seenScope) != 0 {
-						if int8(cNotInt8(isValidScope(hostspan))) != 0 {
+						if cNotInt8(isValidScope(hostspan)) {
 							return int8(int8(int32(0)))
 						}
-					} else if int8(cNotInt8(isValidIPv6(hostspan))) != 0 {
+					} else if cNotInt8(isValidIPv6(hostspan)) {
 						return int8(int8(int32(0)))
 					}
 					if i == uint32(s.len)-uint32(uint32(int32(1))) || int32(*((*byte)(func() unsafe.Pointer {
@@ -647,16 +647,16 @@ func isValidNetwork(s stringSpan) int8 {
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(1))*unsafe.Sizeof(*tempVar))
 				}()), uint32(s.len) - i - uint32(uint32(int32(1)))}
 				var cidrval = uint16(int32(0))
-				if uint32(cidr.len) > uint32(uint32(int32(3))) || uint32(cNotUint32(uint32(cidr.len))) != 0 {
+				if uint32(cidr.len) > uint32(uint32(int32(3))) || cNotUint32(uint32(cidr.len)) {
 					return int8(int8(int32(0)))
 				}
 				{
 					var j = uint32(int32(0))
 					for ; j < uint32(cidr.len); j++ {
-						if int8(cNotInt8(isDecimal(*((*byte)(func() unsafe.Pointer {
+						if cNotInt8(isDecimal(*((*byte)(func() unsafe.Pointer {
 							tempVar := cidr.s
 							return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(j)))*unsafe.Sizeof(*tempVar))
-						}()))))) != 0 {
+						}())))) {
 							return int8(int8(int32(0)))
 						}
 						cidrval = uint16(uint16(uint16(int32(10)*int32(uint16(uint16(cidrval))) + int32(*((*byte)(func() unsafe.Pointer {
@@ -735,7 +735,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("PrivateKey\x00")[0])) != 0 {
 			return PrivateKey
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -743,7 +743,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("ListenPort\x00")[0])) != 0 {
 			return ListenPort
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -751,7 +751,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("Address\x00")[0])) != 0 {
 			return Address
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -759,7 +759,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("DNS\x00")[0])) != 0 {
 			return DNS
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -767,7 +767,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("MTU\x00")[0])) != 0 {
 			return MTU
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -775,7 +775,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("PublicKey\x00")[0])) != 0 {
 			return PublicKey
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -783,7 +783,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("PresharedKey\x00")[0])) != 0 {
 			return PresharedKey
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -791,7 +791,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("AllowedIPs\x00")[0])) != 0 {
 			return AllowedIPs
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -799,7 +799,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("Endpoint\x00")[0])) != 0 {
 			return Endpoint
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -807,7 +807,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("PersistentKeepalive\x00")[0])) != 0 {
 			return PersistentKeepalive
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -815,7 +815,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("FwMark\x00")[0])) != 0 {
 			return FwMark
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -823,7 +823,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("Table\x00")[0])) != 0 {
 			return Table
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -831,7 +831,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("PreUp\x00")[0])) != 0 {
 			return PreUp
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -839,7 +839,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("PostUp\x00")[0])) != 0 {
 			return PostUp
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -847,7 +847,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("PreDown\x00")[0])) != 0 {
 			return PreDown
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -855,7 +855,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("PostDown\x00")[0])) != 0 {
 			return PostDown
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -863,7 +863,7 @@ func getField(s stringSpan) field {
 		if int8(isCaselessSame(s, &[]byte("SaveConfig\x00")[0])) != 0 {
 			return SaveConfig
 		}
-		if cNotInt32(int32(0)) != 0 {
+		if cNotInt32(int32(0)) {
 			break
 		}
 	}
@@ -896,7 +896,7 @@ func addToArray(a *highlightSpanArray, hs *highlightSpan) {
 }
 
 func appendHighlightSpan(a *highlightSpanArray, o *byte, s stringSpan, t highlight) int8 {
-	if uint32(cNotUint32(uint32(s.len))) != 0 {
+	if cNotUint32(uint32(s.len)) {
 		return int8(int8(int32(1)))
 	}
 	addToArray(a, &highlightSpan{t, uint32(int64(uintptr(unsafe.Pointer(s.s))) - int64(uintptr(unsafe.Pointer(o)))), uint32(s.len)})
@@ -918,7 +918,7 @@ func highlightMultivalueValue(ret *highlightSpanArray, parent stringSpan, s stri
 	case uint32(Address), uint32(AllowedIPs):
 		{
 			var slash uint32
-			if int8(cNotInt8(isValidNetwork(s))) != 0 {
+			if cNotInt8(isValidNetwork(s)) {
 				appendHighlightSpan(ret, parent.s, s, highlightError)
 				break
 			}
@@ -988,7 +988,7 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 				if int64(uintptr(unsafe.Pointer(&*((*byte)(func() unsafe.Pointer {
 					tempVar := s.s
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && uint32(cNotUint32(uint32(currentSpan.len))) != 0 {
+				}()))))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && cNotUint32(uint32(currentSpan.len)) {
 					currentSpan.s = (*byte)(func() unsafe.Pointer {
 						tempVar := currentSpan.s
 						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(1)*unsafe.Sizeof(*tempVar))
@@ -1125,7 +1125,7 @@ func highlightValue(ret *highlightSpanArray, parent stringSpan, s stringSpan, se
 	case uint32(Endpoint):
 		{
 			var colon uint32
-			if int8(cNotInt8(isValidEndpoint(s))) != 0 {
+			if cNotInt8(isValidEndpoint(s)) {
 				appendHighlightSpan(ret, parent.s, s, highlightError)
 				break
 			}
@@ -1261,7 +1261,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				if int64(uintptr(unsafe.Pointer(&*((*byte)(func() unsafe.Pointer {
 					tempVar := s.s
 					return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(int32(uint32(i)))*unsafe.Sizeof(*tempVar))
-				}()))))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && uint32(cNotUint32(uint32(currentSpan.len))) != 0 {
+				}()))))) == int64(uintptr(unsafe.Pointer(currentSpan.s))) && cNotUint32(uint32(currentSpan.len)) {
 					currentSpan.s = (*byte)(func() unsafe.Pointer {
 						tempVar := currentSpan.s
 						return unsafe.Pointer(uintptr(unsafe.Pointer(tempVar)) + (uintptr)(1)*unsafe.Sizeof(*tempVar))
