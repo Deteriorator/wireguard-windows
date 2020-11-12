@@ -105,7 +105,7 @@ func isCaselessSame(s stringSpan, c *byte) bool {
 	{
 		var i = (0)
 		for ; i < len; i++ {
-			var a = *((*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(c)) + (uintptr)((i))*unsafe.Sizeof(*c))))
+			var a = *at(c, i)
 			var b = *at(s.s, i)
 			if (a)-('a') < (26) {
 				a &= (95)
@@ -600,7 +600,7 @@ func highlightMultivalue(ret *highlightSpanArray, parent stringSpan, s stringSpa
 				lenAtLastSpace = (0)
 				currentSpan = stringSpan{at(s.s, i+1), (0)}
 			} else if (*at(s.s, i)) == (' ') || (*at(s.s, i)) == ('\t') {
-				if (uintptr(unsafe.Pointer(&*at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
+				if (uintptr(unsafe.Pointer(at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = at(currentSpan.s, 1)
 				} else {
 					currentSpan.len += (1)
@@ -825,7 +825,7 @@ func highlightConfigInt(config *byte) []highlightSpan {
 			} else if (state) == (OnComment) {
 				currentSpan.len += (1)
 			} else if (*at(s.s, i)) == (' ') || (*at(s.s, i)) == ('\t') {
-				if (uintptr(unsafe.Pointer(&*at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
+				if (uintptr(unsafe.Pointer(at(s.s, i)))) == (uintptr(unsafe.Pointer(currentSpan.s))) && currentSpan.len == 0 {
 					currentSpan.s = at(currentSpan.s, 1)
 				} else {
 					currentSpan.len += (1)
