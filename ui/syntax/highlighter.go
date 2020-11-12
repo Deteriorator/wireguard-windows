@@ -37,10 +37,6 @@ func cMemcmp(src1, src2 unsafe.Pointer, n int) int {
 	return (bytes.Compare(b1, b2))
 }
 
-func at(a *byte, i int) *byte {
-	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(a)) + uintptr(i)*unsafe.Sizeof(*a)))
-}
-
 type highlight int
 
 const (
@@ -77,11 +73,6 @@ type highlightSpan struct {
 	len int
 }
 
-type stringSpan struct {
-	s   *byte
-	len int
-}
-
 func isDecimal(c byte) bool {
 	return c >= '0' && c <= '9'
 }
@@ -92,6 +83,15 @@ func isHexadecimal(c byte) bool {
 
 func isAlphabet(c byte) bool {
 	return (c|32) >= 'a' && (c|32) <= 'z'
+}
+
+type stringSpan struct {
+	s   *byte
+	len int
+}
+
+func (s stringSpan) at(i int) *byte {
+	return (*byte)(unsafe.Pointer(uintptr(unsafe.Pointer(s.s)) + uintptr(i)))
 }
 
 func (s stringSpan) isSame(c *byte) bool {
@@ -105,34 +105,32 @@ func (s stringSpan) isCaselessSame(c *byte) bool {
 	if cStrlen(c) != s.len {
 		return false
 	}
-	{
-		for i := 0; i < s.len; i++ {
-			a := *at(c, i)
-			b := *at(s.s, i)
-			if a-'a' < 26 {
-				a &= 95
-			}
-			if b-'a' < 26 {
-				b &= 95
-			}
-			if a != b {
-				return false
-			}
+	for i := 0; i < s.len; i++ {
+		a := *at(c, i)
+		b := *s.at(i)
+		if a-'a' < 26 {
+			a &= 95
+		}
+		if b-'a' < 26 {
+			b &= 95
+		}
+		if a != b {
+			return false
 		}
 	}
 	return true
 }
 
 func (s stringSpan) isValidKey() bool {
-	if s.len != 44 || *at(s.s, 43) != '=' {
+	if s.len != 44 || *s.at(43) != '=' {
 		return false
 	}
 	for i := 0; i < 42; i++ {
-		if !isDecimal(*at(s.s, i)) && !isAlphabet(*at(s.s, i)) && *at(s.s, i) != '/' && *at(s.s, i) != '+' {
+		if !isDecimal(*s.at(i)) && !isAlphabet(*s.at(i)) && *s.at(i) != '/' && *s.at(i) != '+' {
 			return false
 		}
 	}
-	switch *at(s.s, 42) {
+	switch *s.at(42) {
 	case 'A', 'E', 'I', 'M', 'Q', 'U', 'Y', 'c', 'g', 'k', 'o', 's', 'w', '4', '8', '0':
 		return true
 	}
@@ -145,25 +143,25 @@ func (s stringSpan) isValidHostname() bool {
 	if s.len > 63 || s.len == 0 {
 		return false
 	}
-	if *s.s == '-' || *at(s.s, s.len-1) == '-' {
+	if *s.s == '-' || *s.at(s.len - 1) == '-' {
 		return false
 	}
-	if *s.s == '.' || *at(s.s, s.len-1) == '.' {
+	if *s.s == '.' || *s.at(s.len - 1) == '.' {
 		return false
 	}
 	for i := 0; i < s.len; i++ {
-		if isDecimal(*at(s.s, i)) {
+		if isDecimal(*s.at(i)) {
 			numDigit++
 			continue
 		}
-		if *at(s.s, i) == '.' {
+		if *s.at(i) == '.' {
 			numEntity--
 			continue
 		}
-		if !isAlphabet(*at(s.s, i)) && *at(s.s, i) != '-' {
+		if !isAlphabet(*s.at(i)) && *s.at(i) != '-' {
 			return false
 		}
-		if i != 0 && *at(s.s, i) == '.' && *at(s.s, i-1) == '.' {
+		if i != 0 && *s.at(i) == '.' && *s.at(i - 1) == '.' {
 			return false
 		}
 	}
@@ -175,16 +173,16 @@ func (s stringSpan) isValidIPv4() bool {
 	for i := 0; i < 4 && pos < s.len; i++ {
 		val := 0
 		j := 0
-		for ; j < 3 && pos+j < s.len && isDecimal(*at(s.s, pos+j)); j++ {
-			val = 10*val + int(*at(s.s, pos+j)-'0')
+		for ; j < 3 && pos+j < s.len && isDecimal(*s.at(pos + j)); j++ {
+			val = 10*val + int(*s.at(pos + j)-'0')
 		}
-		if j == 0 || j > 1 && *at(s.s, pos) == '0' || val > 255 {
+		if j == 0 || j > 1 && *s.at(pos) == '0' || val > 255 {
 			return false
 		}
 		if pos+j == s.len && i == 3 {
 			return true
 		}
-		if *at(s.s, pos+j) != '.' {
+		if *s.at(pos + j) != '.' {
 			return false
 		}
 		pos += j + 1
@@ -197,18 +195,18 @@ func (s stringSpan) isValidIPv6() bool {
 		return false
 	}
 	pos := 0
-	if *at(s.s, 0) == ':' {
-		if *at(s.s, 1) != ':' {
+	if *s.at(0) == ':' {
+		if *s.at(1) != ':' {
 			return false
 		}
 		pos = 1
 	}
-	if *at(s.s, s.len-1) == ':' && *at(s.s, s.len-2) != ':' {
+	if *s.at(s.len - 1) == ':' && *s.at(s.len - 2) != ':' {
 		return false
 	}
 	seenColon := false
 	for i := 0; pos < s.len; i++ {
-		if *at(s.s, pos) == ':' && !seenColon {
+		if *s.at(pos) == ':' && !seenColon {
 			seenColon = true
 			pos++
 			if pos == s.len {
@@ -221,7 +219,7 @@ func (s stringSpan) isValidIPv6() bool {
 		}
 		j := 0
 		for ; ; j++ {
-			if j < 4 && pos+j < s.len && isHexadecimal(*at(s.s, pos+j)) {
+			if j < 4 && pos+j < s.len && isHexadecimal(*s.at(pos + j)) {
 				continue
 			}
 			break
@@ -235,11 +233,11 @@ func (s stringSpan) isValidIPv6() bool {
 		if i == 7 {
 			return false
 		}
-		if *at(s.s, pos+j) != ':' {
-			if *at(s.s, pos+j) != '.' || i < 6 && !seenColon {
+		if *s.at(pos + j) != ':' {
+			if *s.at(pos + j) != '.' || i < 6 && !seenColon {
 				return false
 			}
-			return stringSpan{at(s.s, pos), s.len - pos}.isValidIPv4()
+			return stringSpan{s.at(pos), s.len - pos}.isValidIPv4()
 		}
 		pos += j + 1
 	}
@@ -252,22 +250,22 @@ func (s stringSpan) isValidUint(supportHex bool, min uint64, max uint64) bool {
 		return false
 	}
 	val := uint64(0)
-	if supportHex && s.len > 2 && *s.s == '0' && *at(s.s, 1) == 'x' {
+	if supportHex && s.len > 2 && *s.s == '0' && *s.at(1) == 'x' {
 		for i := 2; i < s.len; i++ {
-			if *at(s.s, i)-'0' < 10 {
-				val = 16*val + uint64(*at(s.s, i)-'0')
-			} else if (*at(s.s, i))|32-'a' < 6 {
-				val = 16*val + uint64((*at(s.s, i)|32)-'a'+10)
+			if *s.at(i)-'0' < 10 {
+				val = 16*val + uint64(*s.at(i)-'0')
+			} else if (*s.at(i))|32-'a' < 6 {
+				val = 16*val + uint64((*s.at(i)|32)-'a'+10)
 			} else {
 				return false
 			}
 		}
 	} else {
 		for i := 0; i < s.len; i++ {
-			if !isDecimal(*at(s.s, i)) {
+			if !isDecimal(*s.at(i)) {
 				return false
 			}
-			val = 10*val + uint64(*at(s.s, i)-'0')
+			val = 10*val + uint64(*s.at(i)-'0')
 		}
 	}
 	return val <= max && val >= min
@@ -323,7 +321,7 @@ func (s stringSpan) isValidScope() bool {
 		return false
 	}
 	for i := 0; i < s.len; i++ {
-		if isAlphabet(*at(s.s, i)) && !isDecimal(*at(s.s, i)) && *at(s.s, i) != '_' && *at(s.s, i) != '=' && *at(s.s, i) != '+' && *at(s.s, i) != '.' && *at(s.s, i) != '-' {
+		if isAlphabet(*s.at(i)) && !isDecimal(*s.at(i)) && *s.at(i) != '_' && *s.at(i) != '=' && *s.at(i) != '+' && *s.at(i) != '.' && *s.at(i) != '-' {
 			return false
 		}
 	}
@@ -336,9 +334,9 @@ func (s stringSpan) isValidEndpoint() bool {
 	}
 	if *s.s == '[' {
 		seenScope := false
-		hostspan := stringSpan{at(s.s, 1), 0}
+		hostspan := stringSpan{s.at(1), 0}
 		for i := 1; i < s.len; i++ {
-			if *at(s.s, i) == '%' {
+			if *s.at(i) == '%' {
 				if seenScope {
 					return false
 				}
@@ -346,8 +344,8 @@ func (s stringSpan) isValidEndpoint() bool {
 				if !hostspan.isValidIPv6() {
 					return false
 				}
-				hostspan = stringSpan{at(s.s, i+1), 0}
-			} else if *at(s.s, i) == ']' {
+				hostspan = stringSpan{s.at(i + 1), 0}
+			} else if *s.at(i) == ']' {
 				if seenScope {
 					if !hostspan.isValidScope() {
 						return false
@@ -355,10 +353,10 @@ func (s stringSpan) isValidEndpoint() bool {
 				} else if !hostspan.isValidIPv6() {
 					return false
 				}
-				if i == s.len-1 || *at(s.s, (i + 1)) != ':' {
+				if i == s.len-1 || *s.at((i + 1)) != ':' {
 					return false
 				}
-				return stringSpan{at(s.s, i+2), s.len - i - 2}.isValidPort()
+				return stringSpan{s.at(i + 2), s.len - i - 2}.isValidPort()
 			} else {
 				hostspan.len++
 			}
@@ -366,9 +364,9 @@ func (s stringSpan) isValidEndpoint() bool {
 		return false
 	}
 	for i := 0; i < s.len; i++ {
-		if *at(s.s, i) == ':' {
+		if *s.at(i) == ':' {
 			host := stringSpan{s.s, i}
-			port := stringSpan{at(s.s, i+1), s.len - i - 1}
+			port := stringSpan{s.at(i + 1), s.len - i - 1}
 			return port.isValidPort() && (host.isValidIPv4() || host.isValidHostname())
 		}
 	}
@@ -377,18 +375,18 @@ func (s stringSpan) isValidEndpoint() bool {
 
 func (s stringSpan) isValidNetwork() bool {
 	for i := 0; i < s.len; i++ {
-		if *at(s.s, i) == '/' {
+		if *s.at(i) == '/' {
 			ip := stringSpan{s.s, i}
-			cidr := stringSpan{at(s.s, i+1), s.len - i - 1}
+			cidr := stringSpan{s.at(i + 1), s.len - i - 1}
 			cidrval := uint16(0)
 			if cidr.len > 3 || cidr.len == 0 {
 				return false
 			}
 			for j := 0; j < cidr.len; j++ {
-				if !isDecimal(*at(cidr.s, j)) {
+				if !isDecimal(*cidr.at(j)) {
 					return false
 				}
-				cidrval = 10*cidrval + uint16(*at(cidr.s, j)-'0')
+				cidrval = 10*cidrval + uint16(*cidr.at(j)-'0')
 			}
 			if ip.isValidIPv4() {
 				return cidrval <= 32
@@ -512,7 +510,7 @@ func (hsa *highlightSpanArray) highlightMultivalueValue(parent stringSpan, s str
 		}
 		slash := 0
 		for ; slash < s.len; slash++ {
-			if *at(s.s, slash) == '/' {
+			if *s.at(slash) == '/' {
 				break
 			}
 		}
@@ -520,8 +518,8 @@ func (hsa *highlightSpanArray) highlightMultivalueValue(parent stringSpan, s str
 			hsa.append(parent.s, s, highlightIP)
 		} else {
 			hsa.append(parent.s, stringSpan{s.s, slash}, highlightIP)
-			hsa.append(parent.s, stringSpan{at(s.s, slash), 1}, highlightDelimiter)
-			hsa.append(parent.s, stringSpan{at(s.s, slash+1), s.len - slash - 1}, highlightCidr)
+			hsa.append(parent.s, stringSpan{s.at(slash), 1}, highlightDelimiter)
+			hsa.append(parent.s, stringSpan{s.at(slash + 1), s.len - slash - 1}, highlightCidr)
 		}
 	default:
 		hsa.append(parent.s, s, highlightError)
@@ -532,15 +530,15 @@ func (hsa *highlightSpanArray) highlightMultivalue(parent stringSpan, s stringSp
 	currentSpan := stringSpan{s.s, 0}
 	lenAtLastSpace := 0
 	for i := 0; i < s.len; i++ {
-		if *at(s.s, i) == ',' {
+		if *s.at(i) == ',' {
 			currentSpan.len = lenAtLastSpace
 			hsa.highlightMultivalueValue(parent, currentSpan, section)
-			hsa.append(parent.s, stringSpan{at(s.s, i), 1}, highlightDelimiter)
+			hsa.append(parent.s, stringSpan{s.at(i), 1}, highlightDelimiter)
 			lenAtLastSpace = 0
-			currentSpan = stringSpan{at(s.s, i+1), 0}
-		} else if *at(s.s, i) == ' ' || *at(s.s, i) == '\t' {
-			if at(s.s, i) == currentSpan.s && currentSpan.len == 0 {
-				currentSpan.s = at(currentSpan.s, 1)
+			currentSpan = stringSpan{s.at(i + 1), 0}
+		} else if *s.at(i) == ' ' || *s.at(i) == '\t' {
+			if s.at(i) == currentSpan.s && currentSpan.len == 0 {
+				currentSpan.s = currentSpan.at(1)
 			} else {
 				currentSpan.len++
 			}
@@ -587,13 +585,13 @@ func (hsa *highlightSpanArray) highlightValue(parent stringSpan, s stringSpan, s
 		colon := s.len
 		for colon > 0 {
 			colon--
-			if *at(s.s, colon) == ':' {
+			if *s.at(colon) == ':' {
 				break
 			}
 		}
 		hsa.append(parent.s, stringSpan{s.s, colon}, highlightHost)
-		hsa.append(parent.s, stringSpan{at(s.s, colon), 1}, highlightDelimiter)
-		hsa.append(parent.s, stringSpan{at(s.s, colon+1), s.len - colon - 1}, highlightPort)
+		hsa.append(parent.s, stringSpan{s.at(colon), 1}, highlightDelimiter)
+		hsa.append(parent.s, stringSpan{s.at(colon + 1), s.len - colon - 1}, highlightPort)
 	case Address, DNS, AllowedIPs:
 		hsa.highlightMultivalue(parent, s, section)
 	default:
@@ -618,17 +616,17 @@ func highlightConfigInt(config *byte) []highlightSpan {
 	lenAtLastSpace := 0
 	equalsLocation := 0
 	for i := 0; i <= s.len; i++ {
-		if i == s.len || *at(s.s, i) == '\n' || state != onComment && *at(s.s, i) == '#' {
+		if i == s.len || *s.at(i) == '\n' || state != onComment && *s.at(i) == '#' {
 			if state == onKey {
 				currentSpan.len = lenAtLastSpace
 				ret.append(s.s, currentSpan, highlightError)
 			} else if state == onValue {
 				if currentSpan.len != 0 {
-					ret.append(s.s, stringSpan{at(s.s, equalsLocation), 1}, highlightDelimiter)
+					ret.append(s.s, stringSpan{s.at(equalsLocation), 1}, highlightDelimiter)
 					currentSpan.len = lenAtLastSpace
 					ret.highlightValue(s, currentSpan, currentField)
 				} else {
-					ret.append(s.s, stringSpan{at(s.s, equalsLocation), 1}, highlightError)
+					ret.append(s.s, stringSpan{s.at(equalsLocation), 1}, highlightError)
 				}
 			} else if state == onSection {
 				currentSpan.len = lenAtLastSpace
@@ -642,22 +640,22 @@ func highlightConfigInt(config *byte) []highlightSpan {
 			}
 			lenAtLastSpace = 0
 			currentField = Invalid
-			if *at(s.s, i) == '#' {
-				currentSpan = stringSpan{at(s.s, i), 1}
+			if *s.at(i) == '#' {
+				currentSpan = stringSpan{s.at(i), 1}
 				state = onComment
 			} else {
-				currentSpan = stringSpan{at(s.s, i+1), 0}
+				currentSpan = stringSpan{s.at(i + 1), 0}
 				state = onNone
 			}
 		} else if state == onComment {
 			currentSpan.len++
-		} else if *at(s.s, i) == ' ' || *at(s.s, i) == '\t' {
-			if at(s.s, i) == currentSpan.s && currentSpan.len == 0 {
-				currentSpan.s = at(currentSpan.s, 1)
+		} else if *s.at(i) == ' ' || *s.at(i) == '\t' {
+			if s.at(i) == currentSpan.s && currentSpan.len == 0 {
+				currentSpan.s = currentSpan.at(1)
 			} else {
 				currentSpan.len++
 			}
-		} else if *at(s.s, i) == '=' && state == onKey {
+		} else if *s.at(i) == '=' && state == onKey {
 			currentSpan.len = lenAtLastSpace
 			currentField = currentSpan.field()
 			section := sectionForField(currentField)
@@ -667,11 +665,11 @@ func highlightConfigInt(config *byte) []highlightSpan {
 				ret.append(s.s, currentSpan, highlightField)
 			}
 			equalsLocation = i
-			currentSpan = stringSpan{at(s.s, i+1), 0}
+			currentSpan = stringSpan{s.at(i + 1), 0}
 			state = onValue
 		} else {
 			if state == onNone {
-				if *at(s.s, i) == '[' {
+				if *s.at(i) == '[' {
 					state = onSection
 				} else {
 					state = onKey
